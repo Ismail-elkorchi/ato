@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "block-closure.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "blockId", "closed_at", "report_ref"],
+  "properties": {
+    "schema_version": {
+      "const": "block-closure.v1"
+    },
+    "blockId": {
+      "type": "string"
+    },
+    "closed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "report_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "sha256": {
+          "type": "string"
+        }
+      }
+    },
+    "cycles_planned": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "cycles_recorded": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}

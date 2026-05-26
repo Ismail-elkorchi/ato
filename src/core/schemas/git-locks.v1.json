@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ato://git-locks.v1.json",
+  "title": "ATO Git Locks Output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ok",
+    "schema_version",
+    "ato_lock",
+    "git_lock"
+  ],
+  "properties": {
+    "ok": {
+      "type": "boolean",
+      "const": true
+    },
+    "schema_version": {
+      "const": "git-locks.v1"
+    },
+    "ato_lock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "exists",
+        "current",
+        "ttlMs",
+        "ageMs",
+        "pidRunning",
+        "stale"
+      ],
+      "properties": {
+        "path": {
+          "const": ".ato/lock.json"
+        },
+        "exists": {
+          "type": "boolean"
+        },
+        "current": {
+          "anyOf": [
+            { "type": "null" },
+            { "$ref": "#/$defs/lockPayload" }
+          ]
+        },
+        "ttlMs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ageMs": {
+          "anyOf": [
+            { "type": "null" },
+            { "type": "number" }
+          ]
+        },
+        "pidRunning": {
+          "anyOf": [
+            { "type": "null" },
+            { "type": "boolean" }
+          ]
+        },
+        "stale": {
+          "type": "boolean"
+        }
+      }
+    },
+    "git_lock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "exists",
+        "mtime",
+        "ageMs",
+        "git_dir_kind"
+      ],
+      "properties": {
+        "path": {
+          "const": ".git/index.lock"
+        },
+        "exists": {
+          "type": "boolean"
+        },
+        "mtime": {
+          "anyOf": [
+            { "type": "null" },
+            { "type": "string", "format": "date-time" }
+          ]
+        },
+        "ageMs": {
+          "anyOf": [
+            { "type": "null" },
+            { "type": "number" }
+          ]
+        },
+        "git_dir_kind": {
+          "type": "string",
+          "enum": [
+            "directory",
+            "file",
+            "missing"
+          ]
+        }
+      }
+    }
+  },
+  "$defs": {
+    "lockPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pid",
+        "created_at"
+      ],
+      "properties": {
+        "pid": {
+          "type": "integer"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    }
+  }
+}

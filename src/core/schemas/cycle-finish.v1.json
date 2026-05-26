@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ato://cycle-finish.v1.json",
+  "title": "ATO Cycle Finish",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ok",
+    "schema_version",
+    "cycle_id",
+    "queue_id",
+    "gate_ok",
+    "acceptance_checks",
+    "pack_ref",
+    "pack_verify_ref",
+    "paths_written"
+  ],
+  "properties": {
+    "ok": { "type": "boolean" },
+    "schema_version": { "type": "string", "const": "cycle-finish.v1" },
+    "cycle_id": { "type": "string", "pattern": "^CY-\\d{4,}$" },
+    "queue_id": { "type": "string", "pattern": "^BL-\\d{4,}$" },
+    "gate_ok": { "type": "boolean" },
+    "acceptance_checks": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1
+    },
+    "pack_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "cycle_id", "path", "sha256", "manifest_path"],
+      "properties": {
+        "kind": { "type": "string", "const": "cycle_pack" },
+        "cycle_id": { "type": "string", "pattern": "^CY-\\d{4,}$" },
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "manifest_path": { "type": "string", "minLength": 1 }
+      }
+    },
+    "pack_verify_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "cycle_id", "path", "sha256", "ok"],
+      "properties": {
+        "kind": { "type": "string", "const": "pack_verify" },
+        "cycle_id": { "type": "string", "pattern": "^CY-\\d{4,}$" },
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "ok": { "type": "boolean" }
+      }
+    },
+    "paths_written": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1
+    }
+  }
+}

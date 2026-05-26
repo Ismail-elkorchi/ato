@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "cycle-abort-error.v1",
+  "title": "cycle abort no-active refusal",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ok", "schema_version", "code", "message", "suggested_fix"],
+  "properties": {
+    "ok": { "type": "boolean", "const": false },
+    "schema_version": { "type": "string", "const": "cycle-abort-error.v1" },
+    "code": { "type": "string", "const": "NO_ACTIVE_CYCLE" },
+    "message": { "type": "string", "const": "No active cycle state found." },
+    "suggested_fix": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    }
+  }
+}

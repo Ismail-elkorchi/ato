@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ato://telemetry-ingest-result.v1.json",
+  "title": "ATO Telemetry Ingest Result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ok", "schema_version", "source", "path", "counts", "outputs"],
+  "properties": {
+    "ok": { "type": "boolean" },
+    "schema_version": { "type": "string", "const": "telemetry-ingest.v1" },
+    "source": { "type": "string", "enum": ["codex"] },
+    "path": { "type": "string", "minLength": 1 },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "files_scanned",
+        "sessions_ingested",
+        "sessions_skipped",
+        "summaries_written",
+        "index_written"
+      ],
+      "properties": {
+        "files_scanned": { "type": "integer", "minimum": 0 },
+        "sessions_ingested": { "type": "integer", "minimum": 0 },
+        "sessions_skipped": { "type": "integer", "minimum": 0 },
+        "summaries_written": { "type": "integer", "minimum": 0 },
+        "index_written": { "type": "boolean" }
+      }
+    },
+    "outputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["index", "summaries"],
+      "properties": {
+        "index": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path", "sha256"],
+          "properties": {
+            "path": { "type": "string", "minLength": 1 },
+            "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+          }
+        },
+        "summaries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["session_id", "path", "sha256"],
+            "properties": {
+              "session_id": { "type": "string", "minLength": 1 },
+              "path": { "type": "string", "minLength": 1 },
+              "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+            }
+          }
+        }
+      }
+    },
+    "skipped": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "reason"],
+        "properties": {
+          "path": { "type": "string", "minLength": 1 },
+          "reason": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ato://run.v1.json",
+  "title": "ATO Run Log Entry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ts", "kind", "target_id"],
+  "properties": {
+    "ts": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "gate_run",
+        "cycle_abort",
+        "queue_transition",
+        "queue_update",
+        "lesson_add",
+        "pattern_add",
+        "reflect",
+        "pack",
+        "lint",
+        "eval_init",
+        "eval_cycle_record"
+      ]
+    },
+    "target_id": {
+      "type": "string"
+    },
+    "queue_id": {
+      "type": "string",
+      "pattern": "^BL-\\d{4,}$"
+    },
+    "queue_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^BL-\\d{4,}$"
+      }
+    },
+    "lesson_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^LS-\\d{4,}$"
+      }
+    },
+    "pattern_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^PT-\\d{4,}$"
+      }
+    },
+    "mode": {
+      "type": "string"
+    },
+    "commands": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["cmd", "cwd", "exitCode", "durationMs"],
+        "properties": {
+          "cmd": {
+            "type": "string"
+          },
+          "cwd": {
+            "type": "string"
+          },
+          "exitCode": {
+            "type": "integer"
+          },
+          "durationMs": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "summary": {
+      "type": "string"
+    }
+  }
+}

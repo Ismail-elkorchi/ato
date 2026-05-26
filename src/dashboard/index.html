@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en" data-uik-theme="light" data-uik-density="comfortable">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="color-scheme" content="light dark" />
+    <title>ATO Dashboard</title>
+    <link rel="stylesheet" href="./vendor/ui-tokens/base.css" />
+    <link rel="stylesheet" href="./styles.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "@ismail-elkorchi/ui-tokens": "./vendor/ui-tokens/index.js",
+          "@ismail-elkorchi/ui-tokens/": "./vendor/ui-tokens/",
+          "@ismail-elkorchi/ui-primitives": "./vendor/ui-primitives/index.js",
+          "@ismail-elkorchi/ui-primitives/": "./vendor/ui-primitives/",
+          "@ismail-elkorchi/ui-primitives/uik-alert": "./vendor/ui-primitives/src/atomic/feedback/uik-alert/index.js",
+          "@ismail-elkorchi/ui-primitives/uik-box": "./vendor/ui-primitives/src/atomic/layout/uik-box/index.js",
+          "@ismail-elkorchi/ui-primitives/uik-button": "./vendor/ui-primitives/src/atomic/control/uik-button/index.js",
+          "@ismail-elkorchi/ui-primitives/uik-badge": "./vendor/ui-primitives/src/atomic/content/uik-badge/index.js",
+          "@ismail-elkorchi/ui-primitives/uik-code-block": "./vendor/ui-primitives/src/atomic/content/uik-code-block/index.js",
+          "@ismail-elkorchi/ui-primitives/uik-checkbox": "./vendor/ui-primitives/src/atomic/control/uik-checkbox/index.js",
+          "@ismail-elkorchi/ui-primitives/uik-description-list": "./vendor/ui-primitives/src/atomic/content/uik-description-list/index.js",
+          "@ismail-elkorchi/ui-primitives/uik-dialog": "./vendor/ui-primitives/src/atomic/overlay/uik-dialog/index.js",
+          "@ismail-elkorchi/ui-primitives/uik-heading": "./vendor/ui-primitives/src/atomic/content/uik-heading/index.js",
+          "@ismail-elkorchi/ui-primitives/uik-icon": "./vendor/ui-primitives/src/atomic/content/uik-icon/index.js",
+          "@ismail-elkorchi/ui-primitives/uik-input": "./vendor/ui-primitives/src/atomic/control/uik-input/index.js",
+          "@ismail-elkorchi/ui-primitives/uik-link": "./vendor/ui-primitives/src/atomic/control/uik-link/index.js",
+          "@ismail-elkorchi/ui-primitives/uik-pagination": "./vendor/ui-primitives/src/atomic/control/uik-pagination/index.js",
+          "@ismail-elkorchi/ui-primitives/uik-popover": "./vendor/ui-primitives/src/atomic/overlay/uik-popover/index.js",
+          "@ismail-elkorchi/ui-primitives/uik-nav": "./vendor/ui-primitives/src/composed/collection/uik-nav/index.js",
+          "@ismail-elkorchi/ui-primitives/uik-nav-rail": "./vendor/ui-primitives/src/composed/collection/uik-nav-rail/index.js",
+          "@ismail-elkorchi/ui-primitives/uik-listbox": "./vendor/ui-primitives/src/composed/collection/uik-listbox/index.js",
+          "@ismail-elkorchi/ui-primitives/uik-option": "./vendor/ui-primitives/src/composed/collection/uik-listbox/uik-option.js",
+          "@ismail-elkorchi/ui-primitives/uik-combobox": "./vendor/ui-primitives/src/composed/collection/uik-listbox/uik-combobox.js",
+          "@ismail-elkorchi/ui-primitives/uik-tabs": "./vendor/ui-primitives/src/composed/collection/uik-tabs/index.js",
+          "@ismail-elkorchi/ui-primitives/uik-tab": "./vendor/ui-primitives/src/composed/collection/uik-tabs/uik-tab.js",
+          "@ismail-elkorchi/ui-primitives/uik-tab-panel": "./vendor/ui-primitives/src/composed/collection/uik-tabs/uik-tab-panel.js",
+          "@ismail-elkorchi/ui-primitives/uik-tree-view": "./vendor/ui-primitives/src/composed/collection/uik-tree-view/index.js",
+          "@ismail-elkorchi/ui-primitives/uik-progress": "./vendor/ui-primitives/src/atomic/feedback/uik-progress/index.js",
+          "@ismail-elkorchi/ui-primitives/uik-radio": "./vendor/ui-primitives/src/atomic/control/uik-radio/index.js",
+          "@ismail-elkorchi/ui-primitives/uik-radio-group": "./vendor/ui-primitives/src/composed/collection/uik-radio-group/index.js",
+          "@ismail-elkorchi/ui-primitives/uik-separator": "./vendor/ui-primitives/src/atomic/layout/uik-separator/index.js",
+          "@ismail-elkorchi/ui-primitives/uik-resizable-panels": "./vendor/ui-primitives/src/atomic/layout/uik-resizable-panels/index.js",
+          "@ismail-elkorchi/ui-primitives/uik-select": "./vendor/ui-primitives/src/atomic/control/uik-select/index.js",
+          "@ismail-elkorchi/ui-primitives/uik-spinner": "./vendor/ui-primitives/src/atomic/feedback/uik-spinner/index.js",
+          "@ismail-elkorchi/ui-primitives/uik-stack": "./vendor/ui-primitives/src/atomic/layout/uik-stack/index.js",
+          "@ismail-elkorchi/ui-primitives/uik-surface": "./vendor/ui-primitives/src/atomic/layout/uik-surface/index.js",
+          "@ismail-elkorchi/ui-primitives/uik-switch": "./vendor/ui-primitives/src/atomic/control/uik-switch/index.js",
+          "@ismail-elkorchi/ui-primitives/uik-text": "./vendor/ui-primitives/src/atomic/content/uik-text/index.js",
+          "@ismail-elkorchi/ui-primitives/uik-textarea": "./vendor/ui-primitives/src/atomic/control/uik-textarea/index.js",
+          "@ismail-elkorchi/ui-primitives/uik-tooltip": "./vendor/ui-primitives/src/composed/overlay/uik-tooltip/index.js",
+          "@ismail-elkorchi/ui-primitives/uik-visually-hidden": "./vendor/ui-primitives/src/atomic/content/uik-visually-hidden/index.js",
+          "@ismail-elkorchi/ui-shell": "./vendor/ui-shell/index.js",
+          "@ismail-elkorchi/ui-shell/": "./vendor/ui-shell/",
+          "lit": "./vendor/lit/index.js",
+          "lit/": "./vendor/lit/",
+          "lit-html": "./vendor/lit-html/lit-html.js",
+          "lit-html/": "./vendor/lit-html/",
+          "lit-element": "./vendor/lit-element/index.js",
+          "lit-element/": "./vendor/lit-element/",
+          "@lit/reactive-element": "./vendor/@lit/reactive-element/reactive-element.js",
+          "@lit/reactive-element/": "./vendor/@lit/reactive-element/"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <a class="dashboard-skip-link" href="#dashboard-main"
+      >Skip to main content</a
+    >
+    <div id="app" class="dashboard-app"></div>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

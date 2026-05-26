@@ -1,0 +1,7 @@
+{"type":"session_meta","session_id":"session-001","ts":"2025-01-01T00:00:00.000Z","payload":{"originator":"codex","model_provider":"openai","model":"gpt-4.1","cli_version":"0.1.0","git_commit_hash":"deadbeefdeadbeefdeadbeefdeadbeefdeadbeef","git_branch":"main","cwd":"/tmp/outside","instructions":"do not store this text","rate_limit":{"primary_used_percent":12.5,"secondary_used_percent":42.0},"credits":{"balance":7}}}
+{"type":"response_item","ts":"2025-01-01T00:00:01.000Z","role":"user","content":"hello"}
+{"type":"response_item","ts":"2025-01-01T00:00:02.000Z","item":{"role":"assistant","content":"hi"}}
+{"type":"function_call","ts":"2025-01-01T00:00:03.000Z","name":"tool.one","arguments":{"a":1}}
+{"type":"shell_command","ts":"2025-01-01T00:00:04.000Z","command":"echo ok","exit_code":0,"stdout":"ok"}
+{"type":"shell_command","ts":"2025-01-01T00:00:05.000Z","command":"false","exit_code":1,"stderr":"fail"}
+{"type":"token_count","ts":"2025-01-01T00:00:06.000Z","total_token_usage":{"input_tokens":100,"output_tokens":50,"total_tokens":150,"cached_input_tokens":5,"reasoning_output_tokens":20,"context_window":8192}}

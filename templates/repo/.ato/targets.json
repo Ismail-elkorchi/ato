@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "targets": [
+    {
+      "id": "example",
+      "root": "..",
+      "storeDir": ".ato",
+      "fingerprint": "example@REPLACE_ME",
+      "notes": "Example repo root"
+    }
+  ]
+}

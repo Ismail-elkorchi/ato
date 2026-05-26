@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ato://pack-verify.v1.json",
+  "title": "ATO Pack Verify Result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ok",
+    "schema_version",
+    "cycle_id",
+    "pack_path",
+    "pack_sha256",
+    "manifest_path",
+    "verified_files_count",
+    "required_files",
+    "missing_required",
+    "failures"
+  ],
+  "properties": {
+    "ok": { "type": "boolean" },
+    "schema_version": { "type": "string", "const": "pack-verify.v1" },
+    "cycle_id": { "type": "string", "minLength": 1 },
+    "pack_path": { "type": "string", "minLength": 1 },
+    "pack_sha256": {
+      "oneOf": [
+        { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        { "type": "string", "const": "" }
+      ]
+    },
+    "manifest_path": { "type": "string", "minLength": 1 },
+    "verified_files_count": { "type": "integer", "minimum": 0 },
+    "required_files": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "missing_required": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "failures": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "message"],
+        "properties": {
+          "type": { "type": "string", "minLength": 1 },
+          "message": { "type": "string", "minLength": 1 },
+          "path": { "type": "string" },
+          "expected": { "type": "string" },
+          "actual": { "type": "string" },
+          "value": { "type": "string" }
+        }
+      }
+    }
+  }
+}

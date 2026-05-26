@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ato://signal-definition.v1.json",
+  "title": "ATO Signal Definition Catalog",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "name",
+      "type",
+      "source",
+      "collection_method",
+      "evidence_format",
+      "action_rule"
+    ],
+    "properties": {
+      "name": {
+        "type": "string",
+        "minLength": 1
+      },
+      "type": {
+        "type": "string",
+        "enum": [
+          "reliability",
+          "cost",
+          "performance",
+          "ux_friction",
+          "docs_drift",
+          "knowledge_quality",
+          "memory_growth",
+          "security",
+          "agent_telemetry"
+        ]
+      },
+      "source": {
+        "type": "string",
+        "minLength": 1
+      },
+      "collection_method": {
+        "type": "string",
+        "minLength": 1
+      },
+      "evidence_format": {
+        "type": "string",
+        "minLength": 1
+      },
+      "action_rule": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}

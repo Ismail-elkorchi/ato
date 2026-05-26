@@ -1,0 +1,611 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ato://queue.v2.json",
+  "title": "ATO Queue Item",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "title",
+    "type",
+    "status",
+    "priority",
+    "tags",
+    "created_at",
+    "updated_at",
+    "target",
+    "deps",
+    "evidence",
+    "notes",
+    "spec"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^BL-\\d{4,}$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "bug",
+        "debt",
+        "waiver",
+        "quality-debt",
+        "feature",
+        "doc",
+        "contract",
+        "tooling",
+        "investigation"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["queued", "active", "blocked", "done", "dropped"]
+    },
+    "priority": {
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": ["P0", "P1", "P2", "P3", "P4"]
+        },
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4
+        }
+      ]
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "selector": {
+          "type": "string",
+          "enum": ["exact", "range", "milestone", "unbounded"]
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["exact", "range", "milestone", "unbounded"]
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "anyOf": [
+        {
+          "type": "object",
+          "required": ["selector"],
+          "properties": {
+            "selector": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind"],
+          "properties": {
+            "kind": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "deps": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^BL-\\d{4,}$"
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "owner": {
+      "type": "string",
+      "default": "codex"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "origin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["commit"],
+      "properties": {
+        "repo_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "repo_remote": {
+          "type": "string",
+          "minLength": 1
+        },
+        "commit": {
+          "type": "string",
+          "minLength": 1
+        },
+        "subpath": {
+          "type": "string",
+          "minLength": 1
+        },
+        "created_by": {
+          "type": "string",
+          "minLength": 1
+        },
+        "contract_refs": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "doc",
+                  "section"
+                ],
+                "properties": {
+                  "doc": {
+                    "type": "string"
+                  },
+                  "section": {
+                    "type": "string"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "anyOf": [
+        {
+          "type": "object",
+          "required": ["repo_path"],
+          "properties": {
+            "repo_path": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["repo_remote"],
+          "properties": {
+            "repo_remote": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "problem",
+        "outcome",
+        "plan",
+        "acceptance_criteria",
+        "inputs",
+        "deliverables",
+        "scope",
+        "risks",
+        "contract_refs",
+        "runbook"
+      ],
+      "properties": {
+        "problem": {
+          "type": "string",
+          "minLength": 1
+        },
+        "outcome": {
+          "type": "string",
+          "minLength": 1
+        },
+        "plan": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["steps"],
+          "properties": {
+            "steps": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 1
+            },
+            "rationale": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "acceptance_criteria": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "inputs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "deliverables": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "scope": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "scope_paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "risks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "contract_refs": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["doc", "section"],
+                "properties": {
+                  "doc": {
+                    "type": "string"
+                  },
+                  "section": {
+                    "type": "string"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "runbook": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "details": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "rationale": {
+          "type": "string"
+        },
+        "scope": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "acceptance": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "risks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "contract_review": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "contract_gaps": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "contract_followups": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "contract_refs": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["doc", "section"],
+                "properties": {
+                  "doc": {
+                    "type": "string"
+                  },
+                  "section": {
+                    "type": "string"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "acceptance_criteria": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "effort": {
+          "type": "string",
+          "enum": ["S", "M", "L"]
+        },
+        "dependencies": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "blockers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "contract_reflection": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "delta_scan": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "inputs": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "findings": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "evidence": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "system_scan": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "inputs": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "findings": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "evidence": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "queue_items": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^BL-\\d{4,}$"
+              }
+            },
+            "no_actionable_deltas": {
+              "type": "boolean"
+            }
+          }
+        },
+        "decision": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "tradeoffs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "invariants": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "needs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "ask", "status"],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": ["input", "decision", "review", "resource"]
+              },
+              "ask": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": ["open", "resolved"]
+              },
+              "evidence": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "lessons": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "competitive_edge": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["claim"],
+            "properties": {
+              "claim": {
+                "type": "string"
+              },
+              "evidence": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "frozen": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "core_hash": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "enum": ["queued", "active"]
+          }
+        }
+      },
+      "then": {
+        "type": "object",
+        "properties": {
+          "spec": {
+            "type": "object",
+            "properties": {
+              "contract_refs": {
+                "type": "array",
+                "minItems": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "const": "done"
+          }
+        }
+      },
+      "then": {
+        "type": "object",
+        "required": ["completed_at", "frozen"],
+        "properties": {
+          "completed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "frozen": {
+            "type": "object",
+            "required": ["core_hash"],
+            "properties": {
+              "core_hash": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

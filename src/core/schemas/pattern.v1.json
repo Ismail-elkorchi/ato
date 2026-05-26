@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ato://pattern.v1.json",
+  "title": "ATO Pattern",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "title", "kind", "frequency", "last_seen"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^PT-\\d{4,}$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "kind": {
+      "type": "string",
+      "minLength": 1
+    },
+    "summary": {
+      "type": "string"
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "signals": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "queue_refs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^BL-\\d{4,}$"
+      }
+    },
+    "frequency": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "last_seen": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

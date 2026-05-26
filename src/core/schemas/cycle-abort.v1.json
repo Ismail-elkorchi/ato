@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "cycle-abort.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "cycle_id",
+    "queue_id",
+    "block_id",
+    "started_at",
+    "aborted_at",
+    "reason",
+    "git_status_ref",
+    "state_cleared"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "cycle-abort.v1"
+    },
+    "cycle_id": {
+      "type": "string"
+    },
+    "queue_id": {
+      "type": ["string", "null"]
+    },
+    "block_id": {
+      "type": ["string", "null"]
+    },
+    "started_at": {
+      "type": ["string", "null"],
+      "format": "date-time"
+    },
+    "aborted_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1
+    },
+    "git_status_ref": {
+      "type": "string"
+    },
+    "state_cleared": {
+      "type": "boolean",
+      "const": true
+    }
+  }
+}

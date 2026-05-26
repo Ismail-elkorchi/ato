@@ -1,0 +1,162 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "block_id",
+    "cycles_planned",
+    "cycles_attempted",
+    "cycles_recorded",
+    "cycles_done",
+    "cycles_inconclusive",
+    "cycles_fail",
+    "cycles_unknown",
+    "cycles_with_full_gate_artifacts",
+    "cycles_with_pack_total",
+    "cycles_with_pack_verified_total",
+    "cycles_pack_verify_failed_total",
+    "control_group_cycles_total",
+    "control_group_cycles_cadence",
+    "control_group_cycles_audit_lane",
+    "overrides_total",
+    "missing_artifacts",
+    "missing_packs",
+    "pack_verify_failures",
+    "closeout_integrity",
+    "consistency"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "block-report.v1"
+    },
+    "block_id": {
+      "type": "string",
+      "pattern": "^block-\\d{4,}$"
+    },
+    "cycles_planned": {"type": "integer", "minimum": 0},
+    "cycles_attempted": {"type": "integer", "minimum": 0},
+    "cycles_recorded": {"type": "integer", "minimum": 0},
+    "cycles_done": {"type": "integer", "minimum": 0},
+    "cycles_inconclusive": {"type": "integer", "minimum": 0},
+    "cycles_fail": {"type": "integer", "minimum": 0},
+    "cycles_unknown": {"type": "integer", "minimum": 0},
+    "cycles_with_full_gate_artifacts": {"type": "integer", "minimum": 0},
+    "cycles_with_pack_total": {"type": "integer", "minimum": 0},
+    "cycles_with_pack_verified_total": {"type": "integer", "minimum": 0},
+    "cycles_pack_verify_failed_total": {"type": "integer", "minimum": 0},
+    "control_group_cycles_total": {"type": "integer", "minimum": 0},
+    "control_group_cycles_cadence": {"type": "integer", "minimum": 0},
+    "control_group_cycles_audit_lane": {"type": "integer", "minimum": 0},
+    "overrides_total": {"type": "integer", "minimum": 0},
+    "missing_artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["cycle_id", "path", "reason"],
+        "properties": {
+          "cycle_id": {"type": "string"},
+          "path": {"type": "string"},
+          "reason": {"type": "string"}
+        }
+      }
+    },
+    "missing_packs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["cycle_id", "path", "reason"],
+        "properties": {
+          "cycle_id": {"type": "string"},
+          "path": {"type": "string"},
+          "reason": {"type": "string"}
+        }
+      }
+    },
+    "pack_verify_failures": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["cycle_id", "reason"],
+        "properties": {
+          "cycle_id": {"type": "string"},
+          "reason": {"type": "string"}
+        }
+      }
+    },
+    "closeout_integrity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "policy_version",
+        "mode",
+        "closure_path",
+        "seal_path",
+        "canonical_report_path",
+        "closure_present",
+        "seal_present",
+        "report_present",
+        "report_ref_path",
+        "report_ref_sha256",
+        "errors",
+        "warnings"
+      ],
+      "properties": {
+        "policy_version": {
+          "type": "string",
+          "const": "block-closeout-integrity.v1"
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["open_block", "closed_block"]
+        },
+        "closure_path": {
+          "type": "string"
+        },
+        "seal_path": {
+          "type": "string"
+        },
+        "canonical_report_path": {
+          "type": "string"
+        },
+        "closure_present": {
+          "type": "boolean"
+        },
+        "seal_present": {
+          "type": "boolean"
+        },
+        "report_present": {
+          "type": ["boolean", "null"]
+        },
+        "report_ref_path": {
+          "type": ["string", "null"]
+        },
+        "report_ref_sha256": {
+          "type": ["string", "null"]
+        },
+        "errors": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "warnings": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "consistency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ok", "errors", "warnings"],
+      "properties": {
+        "ok": {"type": "boolean"},
+        "errors": {"type": "array", "items": {"type": "string"}},
+        "warnings": {"type": "array", "items": {"type": "string"}}
+      }
+    }
+  }
+}

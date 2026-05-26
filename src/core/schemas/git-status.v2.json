@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ato://git-status.v2.json",
+  "title": "ATO Git Status Output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ok",
+    "schema_version",
+    "dirty",
+    "status_sb",
+    "dirty_paths",
+    "tracked_paths",
+    "untracked_paths",
+    "staged_paths",
+    "unstaged_paths",
+    "status_error",
+    "porcelain_error",
+    "optional_locks"
+  ],
+  "properties": {
+    "ok": {
+      "type": "boolean",
+      "const": true
+    },
+    "schema_version": {
+      "const": "git-status.v2"
+    },
+    "dirty": {
+      "type": "boolean"
+    },
+    "status_sb": {
+      "anyOf": [
+        { "type": "null" },
+        { "type": "string" }
+      ]
+    },
+    "dirty_paths": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "tracked_paths": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "untracked_paths": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "staged_paths": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "unstaged_paths": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "status_error": {
+      "anyOf": [
+        { "type": "null" },
+        { "type": "string" }
+      ]
+    },
+    "porcelain_error": {
+      "anyOf": [
+        { "type": "null" },
+        { "type": "string" }
+      ]
+    },
+    "optional_locks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "strategy",
+        "env_var",
+        "value"
+      ],
+      "properties": {
+        "strategy": {
+          "const": "env"
+        },
+        "env_var": {
+          "const": "GIT_OPTIONAL_LOCKS"
+        },
+        "value": {
+          "const": "0"
+        }
+      }
+    }
+  }
+}

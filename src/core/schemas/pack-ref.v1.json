@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ato://pack-ref.v1.json",
+  "title": "ATO Cycle Pack Reference",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind", "cycle_id", "path", "sha256", "manifest_path"],
+  "properties": {
+    "kind": {
+      "type": "string",
+      "const": "cycle_pack"
+    },
+    "cycle_id": {
+      "type": "string",
+      "pattern": "^CY-\\d{4,}$"
+    },
+    "path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "manifest_path": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

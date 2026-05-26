@@ -1,0 +1,39 @@
+{
+  "ok": true,
+  "mode": "random",
+  "selection": {
+    "cycle_id": "CY-0057",
+    "cycle_index": 57,
+    "due": false,
+    "cadence": 5,
+    "scope": "block",
+    "seed": {
+      "source": "blockId",
+      "value": "block-0003",
+      "block_id": "block-0003"
+    },
+    "candidates": {
+      "total": 122,
+      "eligible": 0
+    },
+    "selection": null
+  },
+  "selection_evidence": {
+    "mode": "random",
+    "due": false,
+    "cycle_id": "CY-0057",
+    "cycle_index": 57,
+    "cadence": 5,
+    "scope": "block",
+    "seed": {
+      "source": "blockId",
+      "value": "block-0003",
+      "block_id": "block-0003"
+    },
+    "candidates": {
+      "total": 122,
+      "eligible": 0
+    },
+    "selection": null
+  }
+}

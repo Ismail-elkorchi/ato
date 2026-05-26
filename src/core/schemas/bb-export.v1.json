@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ato://bb-export.v1.json",
+  "title": "ATO Blackboard Export",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "exported_at", "origin", "posts"],
+  "properties": {
+    "schema_version": {
+      "const": "bb-export.v1"
+    },
+    "exported_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "origin": {
+      "$ref": "#/$defs/origin"
+    },
+    "posts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/post"
+      }
+    }
+  },
+  "$defs": {
+    "origin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repo_id", "repo_fingerprint"],
+      "properties": {
+        "repo_id": {
+          "type": ["string", "null"],
+          "pattern": "^(?!/)(?!.*[A-Z]:[\\\\/]).*$"
+        },
+        "repo_fingerprint": {
+          "type": ["string", "null"],
+          "pattern": "^(?!/)(?!.*[A-Z]:[\\\\/]).*$"
+        }
+      }
+    },
+    "jsonValue": {
+      "anyOf": [
+        { "type": "null" },
+        { "type": "boolean" },
+        { "type": "number" },
+        { "type": "string" },
+        { "type": "array", "items": { "$ref": "#/$defs/jsonValue" } },
+        {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/jsonValue" }
+        }
+      ]
+    },
+    "post": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "id",
+        "created_at",
+        "kind",
+        "author",
+        "scope",
+        "text",
+        "trust"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "bb-post.v1"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "kind": {
+          "enum": ["note", "question", "decision", "warning"]
+        },
+        "author": {
+          "type": "string",
+          "minLength": 1
+        },
+        "scope": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["block_id"],
+          "properties": {
+            "block_id": {
+              "type": "string",
+              "pattern": "^block-\\d{4,}$"
+            },
+            "cycle_id": {
+              "type": ["string", "null"]
+            },
+            "queue_id": {
+              "type": ["string", "null"]
+            }
+          }
+        },
+        "text": {
+          "type": "string"
+        },
+        "payload": {
+          "$ref": "#/$defs/jsonValue"
+        },
+        "trust": {
+          "const": "untrusted"
+        },
+        "origin": {
+          "$ref": "#/$defs/origin"
+        }
+      }
+    }
+  }
+}

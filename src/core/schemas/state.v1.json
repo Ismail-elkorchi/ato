@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ato://state.v1.json",
+  "title": "ATO State",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "targetId"],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "targetId": {
+      "type": "string"
+    },
+    "activeQueueId": {
+      "type": "string",
+      "pattern": "^BL-\\d{4,}$"
+    },
+    "activeCycleId": {
+      "type": "string",
+      "pattern": "^CY-\\d{4,}$"
+    },
+    "activeCycleQueueId": {
+      "type": "string",
+      "pattern": "^BL-\\d{4,}$"
+    },
+    "activeCycleStartedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["fast", "standard", "deep"]
+    },
+    "lastPack": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "budget": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ts": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "lastGate": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["fast", "full"]
+        },
+        "ok": {
+          "type": "boolean"
+        },
+        "ts": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "lastReflect": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "queueId": {
+          "type": "string",
+          "pattern": "^BL-\\d{4,}$"
+        },
+        "ts": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    }
+  }
+}

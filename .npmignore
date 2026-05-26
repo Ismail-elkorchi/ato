@@ -1,0 +1,9 @@
+node_modules
+.ato
+.git
+.github
+.vscode
+coverage
+*.log
+npm-debug.log*
+.DS_Store

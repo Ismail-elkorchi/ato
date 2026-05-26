@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "targetId": "example",
+  "fingerprint": "example@REPLACE_ME",
+  "fingerprintSeed": "REPLACE_ME",
+  "defaultTargetId": "example",
+  "storeDir": ".ato",
+  "contracts": {
+    "platform": ".ato/contracts/PLATFORM_CONTRACT.md"
+  },
+  "pack": {
+    "defaultBudget": 2400
+  },
+  "lock": {
+    "ttlMs": 7200000
+  },
+  "gates": {
+    "fast": [],
+    "full": {
+      "tests": {
+        "root": [
+          {
+            "id": "smoke",
+            "cmd": ["node", "-e", "process.exit(0)"]
+          }
+        ],
+        "scopes": {},
+        "order": []
+      }
+    },
+    "scopeMap": []
+  },
+  "blackboard": {
+    "modes": {
+      "light": [],
+      "deep": []
+    }
+  },
+  "terminology": {
+    "required": ["macro-scope", "router protocol", "cognitive system"],
+    "aliases": {
+      "macro-scope": ["macro scope", "macro_scope"],
+      "router protocol": ["routing protocol"],
+      "cognitive system": ["cognitive-system"]
+    }
+  }
+}

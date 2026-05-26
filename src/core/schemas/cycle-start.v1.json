@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ato://cycle-start.v1.json",
+  "title": "ATO Cycle Start",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ok",
+    "schema_version",
+    "cycle_id",
+    "queue_id",
+    "due",
+    "control_group",
+    "paths_written",
+    "next_required_actions",
+    "agent_instructions"
+  ],
+  "properties": {
+    "ok": { "type": "boolean" },
+    "schema_version": { "type": "string", "const": "cycle-start.v1" },
+    "cycle_id": { "type": "string", "pattern": "^CY-\\d{4,}$" },
+    "queue_id": { "type": "string", "pattern": "^BL-\\d{4,}$" },
+    "due": { "type": "boolean" },
+    "control_group": { "type": "boolean" },
+    "paths_written": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1
+    },
+    "next_required_actions": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1
+    },
+    "agent_instructions": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1
+    },
+    "contract_extract_ref": { "type": "string", "minLength": 1 }
+  }
+}

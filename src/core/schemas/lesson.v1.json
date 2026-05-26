@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ato://lesson.v1.json",
+  "title": "ATO Lesson",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "pattern", "prevention", "frequency", "last_seen"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^LS-\\d{4,}$"
+    },
+    "tool": {
+      "type": "string"
+    },
+    "rule": {
+      "type": "string"
+    },
+    "pattern": {
+      "type": "string",
+      "minLength": 1
+    },
+    "prevention": {
+      "type": "string",
+      "minLength": 1
+    },
+    "frequency": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "last_seen": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "queue_refs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^BL-\\d{4,}$"
+      }
+    },
+    "notes": {
+      "type": "string"
+    }
+  }
+}

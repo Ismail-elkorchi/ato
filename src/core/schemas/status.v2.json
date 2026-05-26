@@ -1,0 +1,211 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ato://status.v2.json",
+  "title": "ATO Status Result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ok",
+    "schema_version",
+    "active_cycle",
+    "selected_queue_id",
+    "control_due",
+    "next_action",
+    "next_action_state",
+    "next_action_reason",
+    "next_action_source",
+    "dirty_tree",
+    "dirty_paths",
+    "git_plan_suggestions",
+    "agent_instructions"
+  ],
+  "properties": {
+    "ok": {
+      "type": "boolean",
+      "const": true
+    },
+    "schema_version": {
+      "const": "status.v2"
+    },
+    "active_cycle": {
+      "anyOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/activeCycle" }
+      ]
+    },
+    "selected_queue_id": {
+      "anyOf": [
+        { "type": "null" },
+        { "type": "string", "pattern": "^BL-\\d{4,}$" }
+      ]
+    },
+    "control_due": {
+      "type": "boolean"
+    },
+    "active_block_id": {
+      "anyOf": [
+        { "type": "null" },
+        { "type": "string", "pattern": "^block-\\d{4,}$" }
+      ]
+    },
+    "next_block_id": {
+      "type": "string",
+      "pattern": "^block-\\d{4,}$"
+    },
+    "next_action": {
+      "type": "string"
+    },
+    "next_action_state": {
+      "type": "string",
+      "enum": [
+        "abort_required",
+        "dirty_tree",
+        "active_cycle",
+        "missing_active_block",
+        "block_exhaustion",
+        "selection_failure",
+        "ready_to_start"
+      ]
+    },
+    "next_action_reason": {
+      "type": "string",
+      "enum": [
+        "abort_reason_present",
+        "dirty_tree_requires_cleanup",
+        "active_cycle_in_progress",
+        "no_active_block_open_next_block",
+        "block_cycles_planned_reached",
+        "no_eligible_block_scoped_items",
+        "ready_for_cycle_start"
+      ]
+    },
+    "next_action_source": {
+      "type": "string",
+      "const": "status-transition-registry.v1"
+    },
+    "dirty_tree": {
+      "type": "boolean"
+    },
+    "dirty_paths": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "git_plan_suggestions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/gitPlanSuggestion" }
+    },
+    "agent_instructions": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "candidates_total": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "candidates_eligible": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "excluded_by_reason": {
+      "$ref": "#/$defs/excludedByReason"
+    },
+    "block_exhaustion": {
+      "$ref": "#/$defs/blockExhaustion"
+    },
+    "contract_extract_ref": {
+      "type": "string"
+    }
+  },
+  "$defs": {
+    "activeCycle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^CY-\\d{4,}$" },
+        "queue_id": {
+          "anyOf": [
+            { "type": "null" },
+            { "type": "string", "pattern": "^BL-\\d{4,}$" }
+          ]
+        },
+        "block_id": {
+          "anyOf": [
+            { "type": "null" },
+            { "type": "string", "pattern": "^block-\\d{4,}$" }
+          ]
+        },
+        "started_at": {
+          "anyOf": [
+            { "type": "null" },
+            { "type": "string", "minLength": 1 }
+          ]
+        },
+        "control_due": { "type": "boolean" },
+        "paths": { "$ref": "#/$defs/statusPaths" }
+      }
+    },
+    "statusPaths": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cycle_state": { "type": "string" },
+        "cycle_start": { "type": "string" },
+        "selection": { "type": "string" },
+        "preflight": { "type": "string" },
+        "contract_extract": { "type": "string" }
+      }
+    },
+    "excludedByReason": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["out_of_scope", "status", "deps", "missing_evidence"],
+      "properties": {
+        "out_of_scope": { "type": "integer", "minimum": 0 },
+        "status": { "type": "integer", "minimum": 0 },
+        "deps": { "type": "integer", "minimum": 0 },
+        "missing_evidence": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "gitPlanSuggestion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["category", "command", "rationale", "path_count", "alternatives"],
+      "properties": {
+        "category": {
+          "type": "string",
+          "enum": ["staged", "unstaged_tracked", "untracked"]
+        },
+        "command": { "type": "string", "minLength": 1 },
+        "rationale": { "type": "string", "minLength": 1 },
+        "path_count": { "type": "integer", "minimum": 0 },
+        "alternatives": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "blockExhaustion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "block_id",
+        "cycles_planned",
+        "cycles_recorded",
+        "next_block_id",
+        "recommended_commands"
+      ],
+      "properties": {
+        "block_id": { "type": "string", "pattern": "^block-\\d{4,}$" },
+        "cycles_planned": { "type": "integer", "minimum": 0 },
+        "cycles_recorded": { "type": "integer", "minimum": 0 },
+        "next_block_id": { "type": "string", "pattern": "^block-\\d{4,}$" },
+        "recommended_commands": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1
+        }
+      }
+    }
+  }
+}
