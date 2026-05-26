@@ -14,7 +14,7 @@ Options:
   --root <path>      Repository root (default: current working directory)
   --write            Rewrite tracked .ato artifacts to path-hygienic form
   --json             Emit machine-readable JSON output
-  --report-only      Always exit 0 (for diagnostics/migration reporting)
+  --report-only      Always exit 0 for diagnostics
   --help             Show this help
 `;
 

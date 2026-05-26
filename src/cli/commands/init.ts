@@ -12,12 +12,6 @@ import {
   writeJsonl,
 } from "../../core/fs.js";
 import { computeFingerprint } from "../../core/targets/fingerprint.js";
-import {
-  ensureEvalStore,
-  evalConfigPath,
-  evalLedgerPath,
-  evalScorecardPath,
-} from "../../core/eval/ledger.js";
 import type { CommandContext } from "../types.js";
 import type { AtoConfig, JsonValue, QueueItem } from "../../core/types.js";
 
@@ -117,11 +111,6 @@ export const runInitCommand = async ({
   const storePath = await resolveStoreInitPath(storeSelection, root);
   const storeDir = toRelativePath(root, storePath);
   const agentsPath = path.join(root, "AGENTS.md");
-  const evalPaths = {
-    config: evalConfigPath(storePath),
-    ledger: evalLedgerPath(storePath),
-    scorecard: evalScorecardPath(storePath),
-  };
 
   let createdAgents = false;
   if (!(await fileExists(agentsPath))) {
@@ -146,11 +135,6 @@ export const runInitCommand = async ({
       return;
     }
 
-    const before = {
-      config: await fileExists(evalPaths.config),
-      ledger: await fileExists(evalPaths.ledger),
-      scorecard: await fileExists(evalPaths.scorecard),
-    };
     const parsedConfig = existingConfig as unknown as AtoConfig;
     const resolvedTargetId =
       typeof parsedConfig.targetId === "string"
@@ -158,26 +142,7 @@ export const runInitCommand = async ({
         : typeof parsedConfig.defaultTargetId === "string"
           ? String(parsedConfig.defaultTargetId)
           : undefined;
-    const evalStoreArgs: { store: string; config: AtoConfig; targetId?: string } = {
-      store: storePath,
-      config: parsedConfig,
-    };
-    if (resolvedTargetId) {
-      evalStoreArgs.targetId = resolvedTargetId;
-    }
-    const evalStore = await ensureEvalStore(evalStoreArgs);
-    const evalStorePaths = {
-      dir: toRelativePath(root, evalStore.paths.dir),
-      config: toRelativePath(root, evalStore.paths.config),
-      ledger: toRelativePath(root, evalStore.paths.ledger),
-      scorecard: toRelativePath(root, evalStore.paths.scorecard),
-    };
-    const created = [
-      ...(createdAgents ? [agentsPath] : []),
-      ...(!before.config ? [evalPaths.config] : []),
-      ...(!before.ledger ? [evalPaths.ledger] : []),
-      ...(!before.scorecard ? [evalPaths.scorecard] : []),
-    ];
+    const created = [...(createdAgents ? [agentsPath] : [])];
     const outputTargetId = resolvedTargetId ?? null;
 
     const platformContract = resolvePlatformContractPath(parsedConfig);
@@ -207,14 +172,12 @@ export const runInitCommand = async ({
         targetId: outputTargetId,
         already_initialized: true,
         created: created.map((entry) => toRelativePath(root, entry)),
-        eval_store: evalStorePaths,
       });
     } else {
       writeLines([
         `root: ${root}`,
         `store: ${storePath}`,
         outputTargetId ? `target: ${outputTargetId}` : null,
-        "eval store: ok",
       ]);
     }
     return;
@@ -355,9 +318,6 @@ export const runInitCommand = async ({
     path.join(storePath, "lessons", "items.jsonl"),
     path.join(storePath, "patterns", "items.jsonl"),
   ];
-
-  await ensureEvalStore({ store: storePath, config, targetId });
-  created.push(evalPaths.config, evalPaths.ledger, evalPaths.scorecard);
 
   if (json) {
     writeJson({

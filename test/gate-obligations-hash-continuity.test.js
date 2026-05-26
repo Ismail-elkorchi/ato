@@ -90,14 +90,6 @@ const writeBlock = async (root, { baselineTag }) => {
     frozen: true,
     cyclesPlanned: 2,
     baseline: { tag: baselineTag },
-    rules: {
-      controlGroup: {
-        enabled: true,
-        cadenceEveryNCycles: 5,
-        selection: "random_from_evidence_pool",
-        determinism: { seedSource: "blockId" },
-      },
-    },
     holdout: {
       version: 1,
       tasks: [

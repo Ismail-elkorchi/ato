@@ -1,14 +1,14 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { selectControlGroupCandidate } from "../dist/core/eval/select.js";
+import { selectCycleCandidate } from "../dist/core/cycle/select.js";
 
-test("control-group selection is deterministic and sorts the pool", () => {
+test("cycle selection is deterministic and sorts the pool", () => {
   const seed = "block-0006";
   const pool = ["BL-0100", "BL-0002", "BL-0099"];
 
-  const first = selectControlGroupCandidate({ seed, poolIds: pool });
-  const second = selectControlGroupCandidate({ seed, poolIds: pool });
+  const first = selectCycleCandidate({ seed, poolIds: pool });
+  const second = selectCycleCandidate({ seed, poolIds: pool });
 
   assert.ok(first);
   assert.ok(second);

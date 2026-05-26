@@ -102,14 +102,6 @@ const writeBlock = async (root, { baselineTag }) => {
     version: 1,
     blockId: "block-0006",
     baseline: { tag: baselineTag },
-    rules: {
-      controlGroup: {
-        enabled: true,
-        cadenceEveryNCycles: 5,
-        selection: "random_from_evidence_pool",
-        determinism: { seedSource: "blockId" },
-      },
-    },
   });
 };
 
@@ -152,7 +144,7 @@ const writeQueue = async (root) => {
   await writeJsonl(path.join(root, ".ato", "queue", "items.jsonl"), items);
 };
 
-test("cycle start refuses when no eligible control-group candidates exist", async () => {
+test("cycle start refuses when no eligible evidence-backed queue items exist", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "ato-cycle-no-eligible-"));
   initGit(root);
   await writeAgents(root);

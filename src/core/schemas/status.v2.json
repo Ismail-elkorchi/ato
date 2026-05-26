@@ -9,7 +9,6 @@
     "schema_version",
     "active_cycle",
     "selected_queue_id",
-    "control_due",
     "next_action",
     "next_action_state",
     "next_action_reason",
@@ -38,9 +37,6 @@
         { "type": "null" },
         { "type": "string", "pattern": "^BL-\\d{4,}$" }
       ]
-    },
-    "control_due": {
-      "type": "boolean"
     },
     "active_block_id": {
       "anyOf": [
@@ -141,7 +137,6 @@
             { "type": "string", "minLength": 1 }
           ]
         },
-        "control_due": { "type": "boolean" },
         "paths": { "$ref": "#/$defs/statusPaths" }
       }
     },

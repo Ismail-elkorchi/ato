@@ -7,7 +7,7 @@ import path from "node:path";
 import {
   buildCycleEvidencePack,
   verifyCycleEvidencePack,
-} from "../dist/core/eval/pack.js";
+} from "../dist/core/cycle/pack.js";
 
 const writeJson = async (filePath, value) => {
   await fs.mkdir(path.dirname(filePath), { recursive: true });

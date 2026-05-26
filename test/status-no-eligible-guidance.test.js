@@ -61,14 +61,6 @@ const writeBlock = async (root) => {
   await writeJson(path.join(root, ".ato", "meta", "blocks", "block-0006.json"), {
     version: 1,
     blockId: "block-0006",
-    rules: {
-      controlGroup: {
-        enabled: true,
-        cadenceEveryNCycles: 5,
-        selection: "random_from_evidence_pool",
-        determinism: { seedSource: "blockId" },
-      },
-    },
   });
 };
 
@@ -111,7 +103,7 @@ const writeQueue = async (root) => {
   await writeJsonl(path.join(root, ".ato", "queue", "items.jsonl"), items);
 };
 
-test("status returns ok with guidance when no eligible control-group candidates", async () => {
+test("status returns ok with guidance when no eligible evidence-backed queue items exist", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "ato-status-no-eligible-"));
   initGit(root);
   await writeAgents(root);

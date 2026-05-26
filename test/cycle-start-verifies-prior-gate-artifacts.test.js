@@ -33,6 +33,12 @@ const writeConfig = async (root) => {
     fingerprintSeed: "seed",
     contracts: { platform: ".ato/contracts/PLATFORM_CONTRACT.md" },
   });
+  await fs.mkdir(path.join(root, ".ato", "contracts"), { recursive: true });
+  await fs.writeFile(
+    path.join(root, ".ato", "contracts", "PLATFORM_CONTRACT.md"),
+    "# Platform Contract\n\n## §0\nBaseline contract section.\n",
+    "utf8",
+  );
 };
 
 const writeBlock = async (root, { baselineTag }) => {
@@ -41,14 +47,6 @@ const writeBlock = async (root, { baselineTag }) => {
     blockId: "block-0005",
     frozen: true,
     baseline: { tag: baselineTag },
-    rules: {
-      controlGroup: {
-        enabled: true,
-        cadenceEveryNCycles: 5,
-        selection: "random_from_evidence_pool",
-        determinism: { seedSource: "blockId" },
-      },
-    },
   });
 };
 
@@ -159,29 +157,19 @@ test("cycle start refuses when prior gate artifacts are missing", async () => {
   await writeQueue(root);
 
   const priorRecord = {
+    schema_version: "cycle-record.v1",
     id: "CY-0001",
     ts: "2025-01-01T00:00:00.000Z",
+    block_id: "block-0005",
     cycle_index: 1,
     hypothesis: "prior cycle",
     acceptance_checks: ["cmd:echo ok"],
     evidence: ["file:.ato/cycles/CY-0001/preflight.json"],
     outcome: "ok",
-    negative_report: {
-      type: "cost",
-      summary: "cost noted",
-      evidence: ["file:.ato/cycles/CY-0001/preflight.json"],
-    },
-    seeding_result: {
-      outcome: "no_seed",
-      summary: "no seed",
-      evidence: ["file:.ato/cycles/CY-0001/preflight.json"],
-    },
     selection_evidence: {
-      mode: "random",
-      due: false,
+      mode: "queue",
       cycle_id: "CY-0001",
       cycle_index: 1,
-      cadence: 5,
       scope: "block",
       seed: { source: "blockId", value: "block-0005", block_id: "block-0005" },
       candidates: { total: 1, eligible: 1 },
@@ -210,7 +198,7 @@ test("cycle start refuses when prior gate artifacts are missing", async () => {
     },
     checks: [],
   };
-  await writeJsonl(path.join(root, ".ato", "eval", "ledger.jsonl"), [priorRecord]);
+  await writeJsonl(path.join(root, ".ato", "cycles", "ledger.jsonl"), [priorRecord]);
 
   commitAll(root);
   tagBaseline(root, baselineTag);

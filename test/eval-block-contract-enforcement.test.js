@@ -9,11 +9,10 @@ import {
   appendEvalCycle,
   validateEvalCycle,
 } from "../dist/core/eval/ledger.js";
-import { buildControlGroupExpectation } from "../dist/core/eval/select.js";
 import {
   buildCycleEvidencePack,
   verifyCycleEvidencePack,
-} from "../dist/core/eval/pack.js";
+} from "../dist/core/cycle/pack.js";
 
 const writeJson = async (filePath, value) => {
   await fs.mkdir(path.dirname(filePath), { recursive: true });
@@ -31,19 +30,11 @@ const hashFile = async (filePath) => {
   return crypto.createHash("sha256").update(data).digest("hex");
 };
 
-const makeBlock = async (store, { cadenceEveryNCycles = 1 } = {}) => {
+const makeBlock = async (store) => {
   const blockPath = path.join(store, "meta", "blocks", "block-0001.json");
   await writeJson(blockPath, {
     version: 1,
     blockId: "block-0001",
-    rules: {
-      controlGroup: {
-        enabled: true,
-        cadenceEveryNCycles,
-        selection: "random_from_evidence_pool",
-        determinism: { seedSource: "blockId" },
-      },
-    },
     holdout: {
       version: 1,
       tasks: [
@@ -56,11 +47,11 @@ const makeBlock = async (store, { cadenceEveryNCycles = 1 } = {}) => {
   });
 };
 
-const setupRepo = async ({ cadenceEveryNCycles = 1 } = {}) => {
+const setupRepo = async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "ato-eval-block-"));
   const store = path.join(root, ".ato");
   await writeJsonl(path.join(store, "eval", "ledger.jsonl"), []);
-  await makeBlock(store, { cadenceEveryNCycles });
+  await makeBlock(store);
   return { root, store };
 };
 
@@ -87,12 +78,10 @@ const makeArtifacts = async ({ store, includeHoldout }) => {
 const makeRecord = async ({
   root,
   store,
-  expected,
+  cycleId = "CY-0001",
+  cycleIndex = 1,
   includeHoldout = true,
-  controlGroup = true,
-  controlGroupReason = "cadence",
 }) => {
-  const cycleId = expected.cycle_id;
   const cycleDir = path.join(store, "cycles", cycleId);
   const preflightPath = path.join(cycleDir, "preflight.json");
   await writeJson(preflightPath, { ok: true });
@@ -131,7 +120,7 @@ const makeRecord = async ({
   return {
     id: cycleId,
     ts: "2025-01-01T00:00:00.000Z",
-    cycle_index: expected.cycle_index,
+    cycle_index: cycleIndex,
     queue_id: "BL-0001",
     hypothesis: "contract check",
     acceptance_checks: ["cmd:echo ok"],
@@ -147,16 +136,12 @@ const makeRecord = async ({
       summary: "no seed this cycle",
       evidence: [`file:${path.relative(root, preflightPath).replace(/\\/g, "/")}`],
     },
-    ...(controlGroup ? { control_group: true } : {}),
-    ...(controlGroupReason ? { control_group_reason: controlGroupReason } : {}),
     selection_evidence: {
-      mode: "random",
-      due: expected.due,
-      cycle_id: expected.cycle_id,
-      cycle_index: expected.cycle_index,
-      cadence: expected.cadence,
-      scope: expected.scope,
-      seed: expected.seed,
+      mode: "queue",
+      cycle_id: cycleId,
+      cycle_index: cycleIndex,
+      scope: "block",
+      seed: { source: "blockId", value: "block-0001", block_id: "block-0001" },
       candidates: { total: 1, eligible: 1 },
       excluded_by_reason: {
         out_of_scope: 0,
@@ -199,108 +184,29 @@ const makeRecord = async ({
 
 test("validateEvalCycle rejects missing gate artifacts", async () => {
   const { root, store } = await setupRepo();
-  const expected = await buildControlGroupExpectation({
-    store,
-    targetId: "tmp",
-  });
-  const record = await makeRecord({ root, store, expected });
+  const record = await makeRecord({ root, store });
   delete record.gate_evidence.artifacts;
 
-  const result = await validateEvalCycle({
-    record,
-    expectedSelection: expected,
-    root,
-    store,
-  });
+  const result = await validateEvalCycle({ record, root, store });
   assert.equal(result.ok, false);
   assert.ok(result.errors.some((entry) => entry.includes("gate_evidence")));
 });
 
 test("validateEvalCycle rejects missing negative_report", async () => {
   const { root, store } = await setupRepo();
-  const expected = await buildControlGroupExpectation({
-    store,
-    targetId: "tmp",
-  });
-  const record = await makeRecord({ root, store, expected });
+  const record = await makeRecord({ root, store });
   delete record.negative_report;
 
-  const result = await validateEvalCycle({
-    record,
-    expectedSelection: expected,
-    root,
-    store,
-  });
+  const result = await validateEvalCycle({ record, root, store });
   assert.equal(result.ok, false);
   assert.ok(result.errors.some((entry) => entry.includes("negative_report")));
 });
 
-test("validateEvalCycle rejects control-group reason mismatch", async () => {
-  const { root, store } = await setupRepo();
-  const expected = await buildControlGroupExpectation({
-    store,
-    targetId: "tmp",
-  });
-  const record = await makeRecord({
-    root,
-    store,
-    expected,
-    controlGroupReason: "",
-  });
-
-  const result = await validateEvalCycle({
-    record,
-    expectedSelection: expected,
-    root,
-    store,
-  });
-  assert.equal(result.ok, false);
-  assert.ok(result.errors.some((entry) => entry.includes("control_group_reason")));
-});
-
-test("validateEvalCycle rejects control_group when not due", async () => {
-  const { root, store } = await setupRepo({ cadenceEveryNCycles: 5 });
-  const expected = await buildControlGroupExpectation({
-    store,
-    targetId: "tmp",
-  });
-  const record = await makeRecord({
-    root,
-    store,
-    expected,
-    controlGroup: true,
-    controlGroupReason: "cadence",
-  });
-
-  const result = await validateEvalCycle({
-    record,
-    expectedSelection: expected,
-    root,
-    store,
-  });
-  assert.equal(result.ok, false);
-  assert.ok(result.errors.some((entry) => entry.includes("control_group")));
-});
-
 test("validateEvalCycle rejects holdout missing from gate artifacts", async () => {
   const { root, store } = await setupRepo();
-  const expected = await buildControlGroupExpectation({
-    store,
-    targetId: "tmp",
-  });
-  const record = await makeRecord({
-    root,
-    store,
-    expected,
-    includeHoldout: false,
-  });
+  const record = await makeRecord({ root, store, includeHoldout: false });
 
-  const result = await validateEvalCycle({
-    record,
-    expectedSelection: expected,
-    root,
-    store,
-  });
+  const result = await validateEvalCycle({ record, root, store });
   assert.equal(result.ok, false);
   assert.ok(
     result.errors.some((entry) => entry.includes("holdout artifacts missing")),
@@ -309,11 +215,7 @@ test("validateEvalCycle rejects holdout missing from gate artifacts", async () =
 
 test("appendEvalCycle enforces append-only and supersedes", async () => {
   const { root, store } = await setupRepo();
-  const expected = await buildControlGroupExpectation({
-    store,
-    targetId: "tmp",
-  });
-  const record = await makeRecord({ root, store, expected });
+  const record = await makeRecord({ root, store });
 
   await appendEvalCycle({ store, record });
 
@@ -322,8 +224,12 @@ test("appendEvalCycle enforces append-only and supersedes", async () => {
     /cycle id 'CY-0001' already exists/,
   );
 
-  const superseding = await makeRecord({ root, store, expected });
-  superseding.id = "CY-0002";
+  const superseding = await makeRecord({
+    root,
+    store,
+    cycleId: "CY-0002",
+    cycleIndex: 2,
+  });
   superseding.supersedes = {
     id: "CY-9999",
     reason: "missing target",

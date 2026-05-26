@@ -27,7 +27,7 @@ import { readState, writeState } from "../../core/state.js";
 import { buildBlackboardView } from "../../core/blackboard/view.js";
 import { appendRunLog, getArtifactsDir } from "../../core/runlog.js";
 import { buildPack } from "../../core/pack/generator.js";
-import { verifyCycleEvidencePack } from "../../core/eval/pack.js";
+import { verifyCycleEvidencePack } from "../../core/cycle/pack.js";
 import type { CommandContext } from "../types.js";
 import type {
   BlackboardSignal,

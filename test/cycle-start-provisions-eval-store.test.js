@@ -84,14 +84,6 @@ const writeBlock = async (root, { baselineTag }) => {
     version: 1,
     blockId: "block-0005",
     baseline: { tag: baselineTag },
-    rules: {
-      controlGroup: {
-        enabled: true,
-        cadenceEveryNCycles: 5,
-        selection: "random_from_evidence_pool",
-        determinism: { seedSource: "blockId" },
-      },
-    },
     holdout: {
       version: 1,
       tasks: [
@@ -203,7 +195,7 @@ const commitAll = (root) => {
   assert.equal(commit.status, 0, commit.stderr);
 };
 
-test("cycle start provisions eval store when missing", async () => {
+test("cycle start does not provision eval store when missing", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "ato-cycle-eval-"));
   initGit(root);
   await writeAgents(root);
@@ -228,6 +220,6 @@ test("cycle start provisions eval store when missing", async () => {
   assert.equal(result.status, 0, result.stderr);
   const ledgerPath = path.join(root, ".ato", "eval", "ledger.jsonl");
   const scorecardPath = path.join(root, ".ato", "eval", "scorecard.json");
-  await fs.access(ledgerPath);
-  await fs.access(scorecardPath);
+  await assert.rejects(() => fs.access(ledgerPath), { code: "ENOENT" });
+  await assert.rejects(() => fs.access(scorecardPath), { code: "ENOENT" });
 });

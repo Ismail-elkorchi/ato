@@ -9,8 +9,6 @@
     "schema_version",
     "cycle_id",
     "queue_id",
-    "due",
-    "control_group",
     "paths_written",
     "next_required_actions",
     "agent_instructions"
@@ -20,8 +18,6 @@
     "schema_version": { "type": "string", "const": "cycle-start.v1" },
     "cycle_id": { "type": "string", "pattern": "^CY-\\d{4,}$" },
     "queue_id": { "type": "string", "pattern": "^BL-\\d{4,}$" },
-    "due": { "type": "boolean" },
-    "control_group": { "type": "boolean" },
     "paths_written": {
       "type": "array",
       "items": { "type": "string", "minLength": 1 },

@@ -115,7 +115,7 @@ const checkProtocol = async (target: TargetContext): Promise<DiagnoseCheck> => {
     severity: result.ok ? "ok" : "fail",
     message: result.ok
       ? `protocol ${result.meta.protocolVersion} cli ${result.meta.cliVersion}`
-      : "Protocol compatibility check failed.",
+      : "Protocol version check failed.",
     details: result,
   };
 };

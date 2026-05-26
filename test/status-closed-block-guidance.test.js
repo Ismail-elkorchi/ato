@@ -55,14 +55,6 @@ const writeClosedBlock = async (root, blockId) => {
   await writeJson(path.join(root, ".ato", "meta", "blocks", `${blockId}.json`), {
     version: 1,
     blockId,
-    rules: {
-      controlGroup: {
-        enabled: true,
-        cadenceEveryNCycles: 5,
-        selection: "random_from_evidence_pool",
-        determinism: { seedSource: "blockId" },
-      },
-    },
   });
   await writeJson(
     path.join(root, ".ato", "meta", "blocks", `${blockId}.closure.json`),

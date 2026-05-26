@@ -17,7 +17,7 @@ const loadQueueSchema = async () => {
 };
 
 test("queue items without origin remain valid", async () => {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), "ato-origin-compat-"));
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "ato-origin-optional-"));
   const storeDir = ".ato";
   const contractDoc = path.resolve(".ato/contracts/PLATFORM_CONTRACT.md");
 

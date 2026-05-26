@@ -5,9 +5,9 @@ import { promises as fs } from "node:fs";
 import { createAjv } from "../schemas/ajv.js";
 import { readJson } from "../fs.js";
 
-import { readEvalCycles } from "../eval/ledger.js";
+import { readCycleRecords } from "../cycle/store.js";
 import { loadBlockConfig, resolveBlockId, resolveCyclesPlanned } from "./config.js";
-import type { EvalCycleRecord } from "../types.js";
+import type { CycleRecord } from "../types.js";
 
 const SCHEMA_URL = new URL("../schemas/block-report.v1.json", import.meta.url);
 
@@ -25,9 +25,6 @@ export type BlockReport = {
   cycles_with_pack_total: number;
   cycles_with_pack_verified_total: number;
   cycles_pack_verify_failed_total: number;
-  control_group_cycles_total: number;
-  control_group_cycles_cadence: number;
-  control_group_cycles_audit_lane: number;
   overrides_total: number;
   missing_artifacts: Array<{ cycle_id: string; path: string; reason: string }>;
   missing_packs: Array<{ cycle_id: string; path: string; reason: string }>;
@@ -218,29 +215,8 @@ const resolveCloseoutIntegrity = async ({
   return { integrity, missing_artifacts: missingArtifacts };
 };
 
-const blockMatches = (record: EvalCycleRecord, blockId: string): boolean =>
-  record.selection_evidence?.seed?.block_id === blockId;
-
-const resolveControlGroupReason = (
-  record: EvalCycleRecord,
-): "cadence" | "audit_lane" | null => {
-  if (record.control_group_reason === "cadence") return "cadence";
-  if (record.control_group_reason === "audit_lane") return "audit_lane";
-  if (record.control_group !== true) return null;
-  const selection = record.selection_evidence;
-  if (!selection || selection.due !== true) return null;
-  const cadence = Number(selection.cadence);
-  const cycleIndex = Number(selection.cycle_index ?? record.cycle_index);
-  if (
-    Number.isFinite(cadence) &&
-    cadence > 0 &&
-    Number.isFinite(cycleIndex) &&
-    cycleIndex > 0
-  ) {
-    return cycleIndex % cadence === 0 ? "cadence" : "audit_lane";
-  }
-  return "cadence";
-};
+const blockMatches = (record: CycleRecord, blockId: string): boolean =>
+  record.block_id === blockId;
 
 const reportConsistency = ({
   report,
@@ -258,11 +234,6 @@ const reportConsistency = ({
     report.cycles_unknown;
   if (totals !== report.cycles_recorded) {
     errors.push("Recorded cycles do not sum to outcome buckets.");
-  }
-  const controlTotals =
-    report.control_group_cycles_cadence + report.control_group_cycles_audit_lane;
-  if (controlTotals !== report.control_group_cycles_total) {
-    errors.push("Control-group totals do not match cadence/audit-lane totals.");
   }
   if (cyclesPlanned === null) {
     errors.push("cyclesPlanned missing from block config.");
@@ -303,24 +274,8 @@ export const buildBlockReport = async ({
   const cyclesPlanned = resolveCyclesPlanned(block);
   const plannedValue = cyclesPlanned ?? 0;
 
-  const records = await readEvalCycles(store);
+  const records = await readCycleRecords(store);
   const blockRecords = records.filter((record) => blockMatches(record, blockId));
-  const controlGroupCounts = blockRecords.reduce(
-    (acc, record) => {
-      if (record.control_group !== true) return acc;
-      acc.total += 1;
-      const reason = resolveControlGroupReason(record);
-      if (reason === "audit_lane") {
-        acc.audit_lane += 1;
-      } else if (reason === "cadence") {
-        acc.cadence += 1;
-      } else {
-        acc.cadence += 1;
-      }
-      return acc;
-    },
-    { total: 0, cadence: 0, audit_lane: 0 },
-  );
 
   const missingArtifacts: BlockReport["missing_artifacts"] = [];
   const missingKeys = new Set<string>();
@@ -547,10 +502,7 @@ export const buildBlockReport = async ({
     cycles_with_pack_total: packsTotal,
     cycles_with_pack_verified_total: packsVerifiedTotal,
     cycles_pack_verify_failed_total: packsVerifyFailedTotal,
-    control_group_cycles_total: controlGroupCounts.total,
-    control_group_cycles_cadence: controlGroupCounts.cadence,
-    control_group_cycles_audit_lane: controlGroupCounts.audit_lane,
-    overrides_total: blockRecords.filter((record) => Boolean(record.override)).length,
+    overrides_total: 0,
     missing_artifacts: missingArtifacts,
     missing_packs: missingPacks,
     pack_verify_failures: packVerifyFailures,

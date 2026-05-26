@@ -5,12 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 
-const readJson = async (filePath) => {
-  const raw = await fs.readFile(filePath, "utf8");
-  return JSON.parse(raw);
-};
-
-test("init creates eval ledger and scorecard", async () => {
+test("init leaves eval store uncreated until explicit eval use", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "ato-init-eval-"));
   const cliPath = path.resolve("dist/cli/main.js");
 
@@ -26,10 +21,16 @@ test("init creates eval ledger and scorecard", async () => {
 
   const ledgerPath = path.join(root, ".ato", "eval", "ledger.jsonl");
   const scorecardPath = path.join(root, ".ato", "eval", "scorecard.json");
-  await fs.access(ledgerPath);
-  await fs.access(scorecardPath);
+  await assert.rejects(() => fs.access(ledgerPath), { code: "ENOENT" });
+  await assert.rejects(() => fs.access(scorecardPath), { code: "ENOENT" });
 
-  const scorecard = await readJson(scorecardPath);
-  assert.equal(scorecard.version, 1);
-  assert.equal(scorecard.cycles, 0);
+  const scorecard = spawnSync(
+    process.execPath,
+    [cliPath, "--repo", root, "eval", "scorecard", "--json"],
+    { cwd: root, encoding: "utf8" },
+  );
+  assert.equal(scorecard.status, 0, scorecard.stderr);
+  const scorecardPayload = JSON.parse(scorecard.stdout.trim());
+  assert.equal(scorecardPayload.scorecard.version, 1);
+  assert.equal(scorecardPayload.scorecard.cycles, 0);
 });

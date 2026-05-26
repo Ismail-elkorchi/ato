@@ -29,7 +29,7 @@ export const ensureProtocol = async (
 ): Promise<Awaited<ReturnType<typeof checkProtocolCompatibility>>> => {
   const result = await checkProtocolCompatibility(root);
   if (!result.ok) {
-    const error = new Error("Protocol compatibility check failed.");
+    const error = new Error("Protocol version check failed.");
     (error as Error & { code?: number; details?: unknown }).code = 5;
     (error as Error & { details?: unknown }).details = result;
     throw error;

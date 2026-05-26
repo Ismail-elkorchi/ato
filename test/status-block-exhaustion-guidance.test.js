@@ -63,14 +63,6 @@ const writeBlock = async (root) => {
     blockId: "block-0011",
     cyclesPlanned: 1,
     baseline: { tag: "baseline_block0004_v0" },
-    rules: {
-      controlGroup: {
-        enabled: true,
-        cadenceEveryNCycles: 5,
-        selection: "random_from_evidence_pool",
-        determinism: { seedSource: "blockId" },
-      },
-    },
   });
 };
 
@@ -112,18 +104,43 @@ const writeQueue = async (root) => {
   await writeJsonl(path.join(root, ".ato", "queue", "items.jsonl"), items);
 };
 
-const writeEvalLedger = async (root) => {
-  await writeJsonl(path.join(root, ".ato", "eval", "ledger.jsonl"), [
+const writeCycleLedger = async (root) => {
+  await writeJsonl(path.join(root, ".ato", "cycles", "ledger.jsonl"), [
     {
+      schema_version: "cycle-record.v1",
       id: "CY-0001",
       ts: "2025-01-01T00:00:00.000Z",
+      block_id: "block-0011",
+      cycle_index: 1,
+      hypothesis: "block exhausted",
+      acceptance_checks: ["cmd:echo ok"],
+      evidence: ["file:AGENTS.md"],
+      outcome: "ok",
       selection_evidence: {
+        mode: "queue",
+        cycle_id: "CY-0001",
+        cycle_index: 1,
+        scope: "block",
         seed: {
           source: "blockId",
           value: "block-0011",
           block_id: "block-0011",
         },
+        candidates: { total: 1, eligible: 1 },
+        excluded_by_reason: {
+          out_of_scope: 0,
+          status: 0,
+          deps: 0,
+          missing_evidence: 0,
+        },
+        selection: {
+          queue_id: "BL-0001",
+          hash: "0".repeat(64),
+        },
       },
+      gate_evidence: { mode: "full", result: { ok: true } },
+      preflight_evidence: { path: "AGENTS.md", sha256: "0".repeat(64) },
+      checks: [],
     },
   ]);
 };
@@ -135,7 +152,7 @@ test("status reports block exhaustion transition when block-0011 is fully record
   await writeConfig(root);
   await writeBlock(root);
   await writeQueue(root);
-  await writeEvalLedger(root);
+  await writeCycleLedger(root);
   commitAll(root);
 
   const cliPath = path.resolve("dist/cli/main.js");

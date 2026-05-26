@@ -20,7 +20,6 @@ test("status schema validates sample payloads", async () => {
     schema_version: "status.v2",
     active_cycle: null,
     selected_queue_id: null,
-    control_due: false,
     next_action: "ato cycle start --json",
     next_action_state: "ready_to_start",
     next_action_reason: "ready_for_cycle_start",

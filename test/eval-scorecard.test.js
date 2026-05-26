@@ -47,11 +47,9 @@ test("eval cycle record appends ledger and updates scorecard", async () => {
       evidence: ["output:ok"],
     },
     selection_evidence: {
-      mode: "random",
-      due: false,
+      mode: "queue",
       cycle_id: "CY-0001",
       cycle_index: 1,
-      cadence: 5,
       scope: "block",
       seed: { source: "blockId", value: "block-0001", block_id: "block-0001" },
       candidates: { total: 1, eligible: 1 },

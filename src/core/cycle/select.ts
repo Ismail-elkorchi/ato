@@ -1,40 +1,26 @@
 import crypto from "node:crypto";
+
 import { readQueueItems } from "../queue/store.js";
 import { depsSatisfied } from "../queue/ordering.js";
 import { normalizeEvidence } from "../queue/transitions.js";
-import { nextEvalCycleId, readEvalCycles } from "./ledger.js";
+import { nextCycleIdentity } from "./store.js";
 import { loadBlockConfig, resolveBlockState } from "../blocks/config.js";
-import type { EvalSelectionEvidence, QueueItem } from "../types.js";
+import type { CycleSelectionEvidence, QueueItem } from "../types.js";
 
-const DEFAULT_CADENCE = 5;
+type CycleSelectionScope = "block" | "global";
 
-type ControlGroupScope = "block" | "global";
-
-type ControlGroupPolicy = {
-  enabled: boolean;
-  cadence: number;
+type CycleSelectionPolicy = {
   seedSource: string;
   seedValue: string;
-  scope: ControlGroupScope;
+  scope: CycleSelectionScope;
   blockId?: string;
   source: "block" | "default";
 };
 
-export type ControlGroupExpectation = {
+export type CycleSelection = {
   cycle_id: string;
   cycle_index: number;
-  due: boolean;
-  cadence: number;
-  scope: ControlGroupScope;
-  seed: { source: string; value: string; block_id: string | null };
-};
-
-export type ControlGroupSelection = {
-  cycle_id: string;
-  cycle_index: number;
-  due: boolean;
-  cadence: number;
-  scope: ControlGroupScope;
+  scope: CycleSelectionScope;
   policy_source: "block" | "default";
   seed: { source: string; value: string; block_id?: string | null };
   rationale: {
@@ -54,18 +40,14 @@ export type ControlGroupSelection = {
   selection: { queue_id: string; hash: string } | null;
 };
 
-export const buildSelectionEvidence = ({
-  mode,
+export const buildCycleSelectionEvidence = ({
   selection,
 }: {
-  mode: "random";
-  selection: ControlGroupSelection;
-}): EvalSelectionEvidence => ({
-  mode,
-  due: selection.due,
+  selection: CycleSelection;
+}): CycleSelectionEvidence => ({
+  mode: "queue",
   cycle_id: selection.cycle_id,
   cycle_index: selection.cycle_index,
-  cadence: selection.cadence,
   scope: selection.scope,
   seed: selection.seed,
   candidates: selection.candidates,
@@ -81,7 +63,7 @@ const asObject = (value: unknown): Record<string, unknown> | null => {
   return null;
 };
 
-const resolveControlGroupPolicy = async ({
+const resolveCycleSelectionPolicy = async ({
   store,
   targetId,
   blockId,
@@ -89,7 +71,7 @@ const resolveControlGroupPolicy = async ({
   store: string;
   targetId: string;
   blockId?: string | null;
-}): Promise<ControlGroupPolicy> => {
+}): Promise<CycleSelectionPolicy> => {
   const blockState = await resolveBlockState(store);
   const blockIdCandidate =
     typeof blockId === "string" && blockId
@@ -99,48 +81,15 @@ const resolveControlGroupPolicy = async ({
     ? await loadBlockConfig(store, blockIdCandidate)
     : null;
   const blockObj = asObject(block);
-  const rules = asObject(blockObj?.["rules"]);
-  const controlGroup = asObject(rules?.["controlGroup"]);
-  const determinism = asObject(controlGroup?.["determinism"]);
-
   const blockIdResolved =
     typeof blockObj?.["blockId"] === "string"
       ? String(blockObj["blockId"])
       : blockIdCandidate;
-  const enabledRaw = controlGroup?.["enabled"];
-  const enabled = typeof enabledRaw === "boolean" ? enabledRaw : true;
-  const cadenceRaw = Number(controlGroup?.["cadenceEveryNCycles"]);
-  const cadence =
-    Number.isFinite(cadenceRaw) && cadenceRaw > 0 ? cadenceRaw : DEFAULT_CADENCE;
-  const seedSourceRaw =
-    typeof determinism?.["seedSource"] === "string"
-      ? String(determinism["seedSource"])
-      : "";
-  const seedSource =
-    seedSourceRaw || (blockIdResolved ? "blockId" : "targetId");
-  const seedValue =
-    seedSource === "blockId" && blockIdResolved
-      ? blockIdResolved
-      : targetId || "default";
-  const scopeRaw =
-    typeof controlGroup?.["scope"] === "string"
-      ? String(controlGroup["scope"]).trim().toLowerCase()
-      : "";
-  const scope: ControlGroupScope =
-    scopeRaw === "global"
-      ? "global"
-      : scopeRaw === "block"
-        ? "block"
-    : blockIdResolved
-      ? "block"
-      : "global";
 
-  const policy: ControlGroupPolicy = {
-    enabled,
-    cadence,
-    seedSource,
-    seedValue,
-    scope,
+  const policy: CycleSelectionPolicy = {
+    seedSource: blockIdResolved ? "blockId" : "targetId",
+    seedValue: blockIdResolved || targetId || "default",
+    scope: blockIdResolved ? "block" : "global",
     source: blockObj ? "block" : "default",
   };
   if (blockIdResolved) {
@@ -168,11 +117,14 @@ const isBlockScopedItem = (
   blockId: string | undefined,
 ): boolean => {
   if (!blockId) return false;
+  const normalized = blockId.toLowerCase();
   const inferred = inferBlockIdFromTitle(item.title ?? "");
-  return inferred === blockId;
+  if (inferred === normalized) return true;
+  if (String(item.target?.value ?? "").toLowerCase() === normalized) return true;
+  return (item.tags ?? []).some((tag) => String(tag).toLowerCase() === normalized);
 };
 
-export const selectControlGroupCandidate = ({
+export const selectCycleCandidate = ({
   seed,
   poolIds,
 }: {
@@ -208,54 +160,28 @@ export const selectControlGroupCandidate = ({
   };
 };
 
-export const buildControlGroupExpectation = async ({
+export const selectCycleQueueItem = async ({
   store,
   targetId,
   blockId,
+  cycleId,
+  cycleIndex,
 }: {
   store: string;
   targetId: string;
   blockId?: string | null;
-}): Promise<ControlGroupExpectation> => {
-  const records = await readEvalCycles(store);
-  const cycleIndex = records.length + 1;
-  const cycleId = nextEvalCycleId(records);
-  const policy = await resolveControlGroupPolicy({
+  cycleId?: string;
+  cycleIndex?: number;
+}): Promise<CycleSelection> => {
+  const identity =
+    cycleId && Number.isFinite(cycleIndex) && Number(cycleIndex) > 0
+      ? { id: cycleId, index: Number(cycleIndex) }
+      : await nextCycleIdentity(store);
+  const policy = await resolveCycleSelectionPolicy({
     store,
     targetId,
     ...(blockId !== undefined ? { blockId } : {}),
   });
-  const due =
-    policy.enabled && policy.cadence > 0 && cycleIndex % policy.cadence === 0;
-
-  return {
-    cycle_id: cycleId,
-    cycle_index: cycleIndex,
-    due,
-    cadence: policy.cadence,
-    scope: policy.scope,
-    seed: {
-      source: policy.seedSource,
-      value: policy.seedValue,
-      block_id: policy.blockId ?? null,
-    },
-  };
-};
-
-export const selectControlGroup = async ({
-  store,
-  targetId,
-}: {
-  store: string;
-  targetId: string;
-}): Promise<ControlGroupSelection> => {
-  const records = await readEvalCycles(store);
-  const cycleIndex = records.length + 1;
-  const cycleId = nextEvalCycleId(records);
-  const policy = await resolveControlGroupPolicy({ store, targetId });
-
-  const due =
-    policy.enabled && policy.cadence > 0 && cycleIndex % policy.cadence === 0;
 
   const queueRecords = await readQueueItems(store);
   const items = queueRecords.map((record) => record.item);
@@ -265,8 +191,9 @@ export const selectControlGroup = async ({
       ? items.filter((item) => isBlockScopedItem(item, policy.blockId))
       : items;
   const outOfScope = items.length - scopedItems.length;
-  const statusEligible = scopedItems
-    .filter((item) => ["active", "queued"].includes(item.status))
+  const statusEligible = scopedItems.filter((item) =>
+    ["active", "queued"].includes(item.status),
+  );
   const statusExcluded = scopedItems.length - statusEligible.length;
   const depsEligible = statusEligible.filter((item) =>
     depsSatisfied(item, statusMap),
@@ -279,7 +206,7 @@ export const selectControlGroup = async ({
   );
 
   const poolIds = eligible.map((item) => item.id);
-  const rationale = selectControlGroupCandidate({
+  const rationale = selectCycleCandidate({
     seed: policy.seedValue,
     poolIds,
   });
@@ -293,29 +220,25 @@ export const selectControlGroup = async ({
 
   if (!rationale) {
     const error = new Error(
-      "No eligible evidence-backed queue items available for control-group selection.",
+      "No eligible evidence-backed queue items available for cycle selection.",
     );
     (error as Error & { code?: number; details?: unknown }).code = 3;
     (error as Error & { details?: unknown }).details = {
-      cycle_id: cycleId,
-      cycle_index: cycleIndex,
-      cadence: policy.cadence,
+      cycle_id: identity.id,
+      cycle_index: identity.index,
       scope: policy.scope,
       candidates_total: scopedItems.length,
       candidates_eligible: eligible.length,
       excluded_by_reason: excludedByReason,
       policy_source: policy.source,
       block_id: policy.blockId ?? null,
-      due,
     };
     throw error;
   }
 
   return {
-    cycle_id: cycleId,
-    cycle_index: cycleIndex,
-    due,
-    cadence: policy.cadence,
+    cycle_id: identity.id,
+    cycle_index: identity.index,
     scope: policy.scope,
     policy_source: policy.source,
     seed: {

@@ -8,7 +8,7 @@ import { validateEvalCycle } from "../dist/core/eval/ledger.js";
 import {
   buildCycleEvidencePack,
   verifyCycleEvidencePack,
-} from "../dist/core/eval/pack.js";
+} from "../dist/core/cycle/pack.js";
 
 const writeJson = async (filePath, value) => {
   await fs.mkdir(path.dirname(filePath), { recursive: true });
@@ -65,14 +65,6 @@ test("q-done evidence requires cycle finish acceptance check", async () => {
   await writeJson(path.join(root, storeDir, "meta", "blocks", "block-0001.json"), {
     version: 1,
     blockId: "block-0001",
-    rules: {
-      controlGroup: {
-        enabled: true,
-        cadenceEveryNCycles: 5,
-        selection: "random_from_evidence_pool",
-        determinism: { seedSource: "blockId" },
-      },
-    },
   });
 
   await writeJsonl(path.join(root, storeDir, "eval", "ledger.jsonl"), makeCycles(1));
@@ -137,11 +129,9 @@ test("q-done evidence requires cycle finish acceptance check", async () => {
       evidence: ["output:ok"],
     },
     selection_evidence: {
-      mode: "random",
-      due: false,
+      mode: "queue",
       cycle_id: "CY-0002",
       cycle_index: 2,
-      cadence: 5,
       scope: "block",
       seed: { source: "blockId", value: "block-0001", block_id: null },
       candidates: { total: 1, eligible: 0 },
@@ -181,7 +171,6 @@ test("q-done evidence requires cycle finish acceptance check", async () => {
 
   const result = await validateEvalCycle({
     record,
-    expectedSelection: null,
     root,
     store: path.join(root, storeDir),
   });

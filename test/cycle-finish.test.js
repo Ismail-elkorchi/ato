@@ -103,14 +103,6 @@ const writeBlock = async (root, { baselineTag }) => {
     blockId: "block-0005",
     baseline: { tag: baselineTag },
     cyclesPlanned: 1,
-    rules: {
-      controlGroup: {
-        enabled: true,
-        cadenceEveryNCycles: 5,
-        selection: "random_from_evidence_pool",
-        determinism: { seedSource: "blockId" },
-      },
-    },
     holdout: {
       version: 1,
       tasks: [
@@ -311,7 +303,7 @@ test("cycle finish writes relative evidence paths", async () => {
   );
   assert.equal(finish.status, 0, finish.stderr);
 
-  const ledgerPath = path.join(root, ".ato", "eval", "ledger.jsonl");
+  const ledgerPath = path.join(root, ".ato", "cycles", "ledger.jsonl");
   const ledgerRaw = await fs.readFile(ledgerPath, "utf8");
   const lines = ledgerRaw.trim().split(/\r?\n/);
   const last = JSON.parse(lines[lines.length - 1]);

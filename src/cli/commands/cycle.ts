@@ -38,25 +38,18 @@ import {
 } from "../../core/contracts/index.js";
 import { extractSection } from "../../core/contracts/extract.js";
 import type { ContractEntry, ContractIndex } from "../../core/contracts/index.js";
-import { captureEvalPreflight } from "../../core/eval/preflight.js";
+import { captureCyclePreflight } from "../../core/cycle/preflight.js";
 import {
   buildCycleEvidencePack,
   verifyCycleEvidencePack,
-} from "../../core/eval/pack.js";
-import type { PackVerifyResult } from "../../core/eval/pack.js";
+} from "../../core/cycle/pack.js";
+import type { PackVerifyResult } from "../../core/cycle/pack.js";
 import {
-  buildSelectionEvidence,
-  buildControlGroupExpectation,
-  selectControlGroup,
-} from "../../core/eval/select.js";
-import type { ControlGroupSelection } from "../../core/eval/select.js";
-import {
-  appendEvalCycle,
-  ensureEvalStore,
-  normalizeEvalCycleInput,
-  readEvalCycles,
-  validateEvalCycle,
-} from "../../core/eval/ledger.js";
+  buildCycleSelectionEvidence,
+  selectCycleQueueItem,
+} from "../../core/cycle/select.js";
+import type { CycleSelection } from "../../core/cycle/select.js";
+import { appendCycleRecord, readCycleRecords } from "../../core/cycle/store.js";
 import { runGates } from "../../core/gates/runner.js";
 import { resolveGateEnv } from "../../core/gates/env.js";
 import { recommendGateMode } from "../../core/gates/recommend.js";
@@ -87,8 +80,8 @@ import {
 } from "./cycle-finish-budget.js";
 import type { CommandContext } from "../types.js";
 import type {
-  EvalCheckRecord,
-  EvalCycleRecord,
+  CycleCheckRecord,
+  CycleRecord,
   JsonObject,
   JsonValue,
   LessonItem,
@@ -209,7 +202,7 @@ const parseBudgetMs = (value: string | boolean | undefined): number => {
 const isFlagEnabled = (value: string | boolean | undefined): boolean =>
   value === true || value === "true";
 
-const isEvalCheckOk = (result: EvalCheckRecord): boolean => {
+const isCycleCheckOk = (result: CycleCheckRecord): boolean => {
   if (typeof result.status === "string") return result.status === "ok";
   if (typeof result.exitCode === "number") return result.exitCode === 0;
   return false;
@@ -605,13 +598,11 @@ const ensureContractArtifacts = async ({
 };
 
 const findLastDoneCycle = (
-  records: EvalCycleRecord[],
+  records: CycleRecord[],
   blockId: string,
-): EvalCycleRecord | null => {
+): CycleRecord | null => {
   const filtered = records.filter(
-    (record) =>
-      record.outcome === "ok" &&
-      record.selection_evidence?.seed?.block_id === blockId,
+    (record) => record.outcome === "ok" && record.block_id === blockId,
   );
   return filtered.length ? filtered[filtered.length - 1] ?? null : null;
 };
@@ -621,7 +612,7 @@ const verifyPriorGateArtifacts = async ({
   record,
 }: {
   root: string;
-  record: EvalCycleRecord | null;
+  record: CycleRecord | null;
 }): Promise<{
   ok: boolean;
   missing: Array<{ path: string }>;
@@ -1822,12 +1813,6 @@ export const runCycleCommand = async ({
 
     const lockPath = await acquireWriteLock(target, target.config.lock?.ttlMs);
     try {
-      await ensureEvalStore({
-        store: target.storePath,
-        config: target.config,
-        targetId: target.id,
-      });
-
       const blockState = await resolveBlockState(target.storePath);
       const hasBlocks = blockState.block_ids.length > 0;
       const activeBlockId = blockState.active_block_id;
@@ -1879,7 +1864,7 @@ export const runCycleCommand = async ({
         }
 
         if (blockFrozen) {
-          const records = await readEvalCycles(target.storePath);
+          const records = await readCycleRecords(target.storePath);
           const lastDone = findLastDoneCycle(records, configuredBlockId);
           const priorCheck = await verifyPriorGateArtifacts({
             root: target.root,
@@ -1905,17 +1890,20 @@ export const runCycleCommand = async ({
         }
       }
 
-      const preflight = await captureEvalPreflight({
+      const preflight = await captureCyclePreflight({
         root: target.root,
         store: target.storePath,
         targetId: target.id,
       });
 
-      let selection: ControlGroupSelection;
+      let selection: CycleSelection;
       try {
-        selection = await selectControlGroup({
+        selection = await selectCycleQueueItem({
           store: target.storePath,
           targetId: target.id,
+          blockId: configuredBlockId,
+          cycleId: preflight.cycle_id,
+          cycleIndex: preflight.cycle_index,
         });
       } catch (error) {
         const err = error as Error & { code?: number; details?: unknown };
@@ -1938,7 +1926,7 @@ export const runCycleCommand = async ({
             });
           } else {
             writeLines([
-              `error: ${err.message ?? "No eligible control-group candidates."}`,
+              `error: ${err.message ?? "No eligible cycle candidates."}`,
               "suggested fix:",
               ...suggestedFix.map((line) => `- ${line}`),
             ]);
@@ -1988,8 +1976,7 @@ export const runCycleCommand = async ({
         });
       }
 
-      const selectionEvidence = buildSelectionEvidence({
-        mode: "random",
+      const selectionEvidence = buildCycleSelectionEvidence({
         selection,
       });
       const selectionPath = path.join(cycleDir, "selection.json");
@@ -2008,9 +1995,8 @@ export const runCycleCommand = async ({
         cycle_id: preflight.cycle_id,
         queue_id: selectedId,
         started_at: startedAt,
-        control_group_due: selection.due,
         block_id: resolvedBlockId,
-        selection_mode: "random",
+        selection_mode: "queue",
         selection_hash: selection.selection?.hash ?? null,
         preflight: {
           path: preflight.path,
@@ -2046,8 +2032,6 @@ export const runCycleCommand = async ({
         schema_version: CYCLE_START_SCHEMA,
         cycle_id: preflight.cycle_id,
         queue_id: selectedId,
-        due: selection.due,
-        control_group: selection.due,
         paths_written: [
           toRelativePath(target.root, path.join(cycleDir, "preflight.json")),
           selectionRel,
@@ -2377,12 +2361,6 @@ export const runCycleCommand = async ({
       }
     }
 
-    await ensureEvalStore({
-      store: target.storePath,
-      config: target.config,
-      targetId: target.id,
-    });
-
     const { items, validation } = await loadQueueForWrite(target);
     ensureQueueValid(validation);
     const found = findItem(items, queueId);
@@ -2432,7 +2410,7 @@ export const runCycleCommand = async ({
       };
       throw error;
     }
-    const acceptanceResults: EvalCheckRecord[] = [];
+    const acceptanceResults: CycleCheckRecord[] = [];
     const acceptanceArtifacts: string[] = [];
     const acceptanceAuditEntries: AcceptanceAuditEntry[] = [];
     const previousAcceptanceAudit = await readAcceptanceAudit(cycleDir);
@@ -2690,7 +2668,7 @@ export const runCycleCommand = async ({
     let gate: {
       ok: boolean;
       mode: string;
-      results: EvalCheckRecord[];
+      results: CycleCheckRecord[];
       totalDurationMs: number;
       plan: unknown;
       preflight: unknown;
@@ -2713,7 +2691,7 @@ export const runCycleCommand = async ({
         throw error;
       }
       const existingResultsRaw = Array.isArray(existingGate["results"])
-        ? (existingGate["results"] as EvalCheckRecord[])
+        ? (existingGate["results"] as CycleCheckRecord[])
         : [];
       const existingResults = existingResultsRaw.map((entry) => {
         const artifactsRaw = Array.isArray(entry.artifacts)
@@ -2724,7 +2702,7 @@ export const runCycleCommand = async ({
         const artifacts = artifactsRaw
           .filter((artifact): artifact is string => typeof artifact === "string")
           .map((artifact) => normalizeArtifactPath(target.root, artifact));
-        const normalized: EvalCheckRecord = {
+        const normalized: CycleCheckRecord = {
           id: entry.id,
           command: entry.command,
           ...(entry.kind ? { kind: entry.kind } : {}),
@@ -2820,7 +2798,7 @@ export const runCycleCommand = async ({
         const artifacts = result.artifact
           ? [normalizeArtifactPath(target.root, result.artifact)]
           : [];
-        const normalized: EvalCheckRecord = {
+        const normalized: CycleCheckRecord = {
           id: result.id,
           command: result.command,
           status: result.status,
@@ -2931,7 +2909,7 @@ export const runCycleCommand = async ({
     acceptanceArtifacts.push(acceptanceAuditRel);
 
     if (!gate.ok) {
-      const failure = gate.results.find((result) => !isEvalCheckOk(result)) ?? null;
+      const failure = gate.results.find((result) => !isCycleCheckOk(result)) ?? null;
       const failureRecord =
         failure && typeof failure.exitCode === "number"
           ? { command: failure.command, exitCode: failure.exitCode }
@@ -2996,7 +2974,7 @@ export const runCycleCommand = async ({
         gate_path: gateRel,
         results: gate.results.map((result) => ({
           id: result.id,
-          ok: isEvalCheckOk(result),
+          ok: isCycleCheckOk(result),
           ...(typeof result.exitCode === "number"
             ? { exitCode: result.exitCode }
             : {}),
@@ -3060,7 +3038,13 @@ export const runCycleCommand = async ({
       ...gate.artifacts,
     ];
     const packVerifyPath = path.join(cycleDir, "pack-verify.json");
-    let packRef: { path: string; manifest_path: string; sha256: string };
+    let packRef: {
+      kind: "cycle_pack";
+      cycle_id: string;
+      path: string;
+      manifest_path: string;
+      sha256: string;
+    };
     let packVerifyResult: PackVerifyResult;
 
     if (!allowPackVerify) {
@@ -3082,6 +3066,8 @@ export const runCycleCommand = async ({
       }
       packVerifyResult = existingPackVerify as PackVerifyResult;
       packRef = {
+        kind: "cycle_pack",
+        cycle_id: activeCycleId,
         path: String(packVerifyResult.pack_path ?? ""),
         manifest_path: String(packVerifyResult.manifest_path ?? ""),
         sha256: String(packVerifyResult.pack_sha256 ?? ""),
@@ -3108,7 +3094,7 @@ export const runCycleCommand = async ({
     const packVerifyRel = toRelativePath(target.root, packVerifyPath);
     const packVerifySha = await hashFileSha256(packVerifyPath);
     const packVerifyRef = {
-      kind: "pack_verify",
+      kind: "pack_verify" as const,
       cycle_id: activeCycleId,
       path: packVerifyRel,
       sha256: packVerifySha,
@@ -3188,11 +3174,6 @@ export const runCycleCommand = async ({
     }
 
     const preflightSha = await hashFileSha256(preflightPath);
-    const controlGroupDue = Boolean(
-      selectionEvidence && typeof selectionEvidence["due"] === "boolean"
-        ? selectionEvidence["due"]
-        : false,
-    );
     const gateArtifacts = await Promise.all(
       gate.artifacts.map(async (artifact) => {
         const resolved = path.isAbsolute(artifact)
@@ -3205,7 +3186,7 @@ export const runCycleCommand = async ({
       }),
     );
 
-    const existingCycles = await readEvalCycles(target.storePath);
+    const existingCycles = await readCycleRecords(target.storePath);
     if (blockFrozen && blockId) {
       const lastDone = findLastDoneCycle(existingCycles, blockId);
       const previousHash = lastDone?.gate_evidence?.obligations_hash ?? null;
@@ -3228,10 +3209,14 @@ export const runCycleCommand = async ({
       }
     }
 
-    const cycleRecordInput = {
+    const cycleRecordPath = path.join(cycleDir, "cycle-record.json");
+    const cycleRecordRel = toRelativePath(target.root, cycleRecordPath);
+    const cycleRecord: CycleRecord = {
+      schema_version: "cycle-record.v1",
       id: activeCycleId,
       ts: new Date().toISOString(),
       queue_id: queueId,
+      ...(blockId ? { block_id: blockId } : {}),
       cycle_index: cycleIndex,
       hypothesis: found.item.spec?.outcome ?? found.item.title ?? "cycle",
       acceptance_checks: acceptance,
@@ -3249,20 +3234,7 @@ export const runCycleCommand = async ({
         `file:${packRef.manifest_path}`,
       ]),
       outcome: "ok",
-      negative_report: {
-        type: "cost",
-        summary: `Full gate run took ${gate.totalDurationMs}ms.`,
-        evidence: [`file:${gateRel}`],
-      },
-      seeding_result: {
-        outcome: "no_seed",
-        summary: "No queue items seeded during cycle finish.",
-        evidence: [`file:${cycleFinishRel}`],
-      },
-      selection_evidence: selectionEvidence,
-      ...(controlGroupDue
-        ? { control_group: true, control_group_reason: "cadence" }
-        : {}),
+      selection_evidence: selectionEvidence as unknown as CycleRecord["selection_evidence"],
       gate_evidence: {
         mode: "full",
         result: { ok: gate.ok },
@@ -3273,63 +3245,7 @@ export const runCycleCommand = async ({
       pack_ref: packRef,
       pack_verify_ref: packVerifyRef,
       checks: acceptanceResults,
-    } as JsonObject;
-
-    const cycleInputPath = path.join(cycleDir, "eval-cycle-input.json");
-    await writeJsonFile(cycleInputPath, cycleRecordInput);
-    const cycleInputRel = toRelativePath(target.root, cycleInputPath);
-
-    const existing = existingCycles;
-    const normalizedRecord = normalizeEvalCycleInput({
-      input: cycleRecordInput,
-      fallbackId: activeCycleId,
-      root: target.root,
-    });
-
-    if (existing.some((entry) => entry.id === normalizedRecord.id)) {
-      throw new Error(`cycle id '${normalizedRecord.id}' already exists.`);
-    }
-
-    const expectedSelection = await buildControlGroupExpectation({
-      store: target.storePath,
-      targetId: target.id,
-      blockId,
-    });
-
-    const recordValidation = await validateEvalCycle({
-      record: normalizedRecord,
-      expectedSelection,
-      root: target.root,
-      store: target.storePath,
-    });
-    if (!recordValidation.ok) {
-      const error = new Error("Invalid eval cycle.");
-      (error as Error & { code?: number; details?: unknown }).code = 3;
-      (error as Error & { details?: unknown }).details = {
-        errors: recordValidation.errors,
-        guidance: recordValidation.guidance,
-      };
-      throw error;
-    }
-
-    const scorecard = await appendEvalCycle({
-      store: target.storePath,
-      record: normalizedRecord,
-    });
-
-    await appendRunLog(target.storePath, {
-      ts: new Date().toISOString(),
-      kind: "eval_cycle_record",
-      target_id: target.id,
-      queue_id: queueId,
-      commands: [],
-      artifacts: [],
-      summary: "eval cycle record",
-    });
-
-    const evalRecordPath = path.join(cycleDir, "eval-cycle-record.json");
-    await writeJsonFile(evalRecordPath, { ok: true, id: normalizedRecord.id, scorecard });
-    const evalRecordRel = toRelativePath(target.root, evalRecordPath);
+    };
 
     await addEvidenceInputs({
       target,
@@ -3427,6 +3343,20 @@ export const runCycleCommand = async ({
     await writeJsonFile(qDonePath, { ok: true, id: queueId, status: "done" });
     acceptanceArtifacts.push(qDoneRel);
     await writeJsonFile(cycleFinishPath, cycleFinishPayload);
+    await writeJsonFile(cycleRecordPath, cycleRecord as unknown as JsonValue);
+    await appendCycleRecord({
+      store: target.storePath,
+      record: cycleRecord,
+    });
+    await appendRunLog(target.storePath, {
+      ts: new Date().toISOString(),
+      kind: "cycle_record",
+      target_id: target.id,
+      queue_id: queueId,
+      commands: [],
+      artifacts: [cycleRecordRel],
+      summary: "cycle record",
+    });
 
     const nextState = {
       ...state,
@@ -3467,8 +3397,7 @@ export const runCycleCommand = async ({
         acceptanceResultsRel,
         packRef.path,
         packRef.manifest_path,
-        cycleInputRel,
-        evalRecordRel,
+        cycleRecordRel,
       ],
     };
 

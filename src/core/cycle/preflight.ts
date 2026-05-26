@@ -7,7 +7,7 @@ import { readQueueItems } from "../queue/store.js";
 import { depsSatisfied } from "../queue/ordering.js";
 import { normalizeEvidence } from "../queue/transitions.js";
 import { stableStringify, writeJson } from "../fs.js";
-import { nextEvalCycleId, readEvalCycles } from "./ledger.js";
+import { nextCycleIdentity } from "./store.js";
 import type { QueueItem } from "../types.js";
 
 type CommandResult = {
@@ -18,7 +18,7 @@ type CommandResult = {
 };
 
 type PreflightSnapshot = {
-  schema_version: "eval-preflight.v1";
+  schema_version: "cycle-preflight.v1";
   captured_at: string;
   cycle: { id: string; index: number };
   target_id?: string;
@@ -126,7 +126,7 @@ const hashFile = async (filePath: string): Promise<string> => {
   return crypto.createHash("sha256").update(data).digest("hex");
 };
 
-export const captureEvalPreflight = async ({
+export const captureCyclePreflight = async ({
   root,
   store,
   targetId,
@@ -141,27 +141,23 @@ export const captureEvalPreflight = async ({
   sha256: string;
   preflight: PreflightSnapshot;
 }> => {
-  const records = await readEvalCycles(store);
-  const cycleId = nextEvalCycleId(records);
-  const cycleIndex = records.length + 1;
+  const identity = await nextCycleIdentity(store);
 
   const [statusResult, diffResult] = await Promise.all([
     runCommand(["git", "status", "-sb"], root),
     runCommand(["git", "diff", "--name-only"], root),
   ]);
 
-  const statusOutput = statusResult.ok
-    ? statusResult.stdout.trimEnd()
-    : null;
+  const statusOutput = statusResult.ok ? statusResult.stdout.trimEnd() : null;
   const diffLines = diffResult.ok ? parseLines(diffResult.stdout) : [];
 
   const queueRecords = await readQueueItems(store);
   const items = queueRecords.map((record) => record.item);
 
   const preflight: PreflightSnapshot = {
-    schema_version: "eval-preflight.v1",
+    schema_version: "cycle-preflight.v1",
     captured_at: new Date().toISOString(),
-    cycle: { id: cycleId, index: cycleIndex },
+    cycle: { id: identity.id, index: identity.index },
     ...(targetId ? { target_id: targetId } : {}),
     node: { version: process.version },
     git: {
@@ -177,14 +173,14 @@ export const captureEvalPreflight = async ({
     queue: buildQueueSummary(items),
   };
 
-  const preflightPath = path.join(store, "cycles", cycleId, "preflight.json");
+  const preflightPath = path.join(store, "cycles", identity.id, "preflight.json");
   await writeJson(preflightPath, preflight);
   const sha256 = await hashFile(preflightPath);
   const relPath = path.relative(root, preflightPath) || preflightPath;
   return {
-    cycle_id: cycleId,
-    cycle_index: cycleIndex,
-    path: relPath,
+    cycle_id: identity.id,
+    cycle_index: identity.index,
+    path: relPath.replace(/\\/g, "/"),
     sha256,
     preflight,
   };

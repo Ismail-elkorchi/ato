@@ -26,7 +26,7 @@ test("tracked .ato artifacts are path-hygienic", () => {
   assert.equal(payload.count, 0);
 });
 
-test("path hygiene migration rewrites inside-repo and external absolute paths", async () => {
+test("path hygiene write mode rewrites inside-repo and external absolute paths", async () => {
   const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), "ato-path-hygiene-"));
   const trackedFile = path.join(repoRoot, ".ato", "queue", "items.jsonl");
   await fs.mkdir(path.dirname(trackedFile), { recursive: true });
@@ -73,7 +73,7 @@ test("path hygiene migration rewrites inside-repo and external absolute paths", 
   assert.equal(beforePayload.ok, false);
   assert.ok(beforePayload.count >= 2);
 
-  const migrate = runCheck({
+  const writeMode = runCheck({
     args: ["--root", repoRoot, "--write", "--json"],
     cwd: repoRoot,
     env: {
@@ -84,13 +84,13 @@ test("path hygiene migration rewrites inside-repo and external absolute paths", 
     },
   });
   assert.equal(
-    migrate.status,
+    writeMode.status,
     0,
-    `expected migration to pass, got ${migrate.status}\n${migrate.stdout}\n${migrate.stderr}`,
+    `expected write mode to pass, got ${writeMode.status}\n${writeMode.stdout}\n${writeMode.stderr}`,
   );
-  const migratePayload = JSON.parse(migrate.stdout);
-  assert.equal(migratePayload.ok, true);
-  assert.equal(migratePayload.count, 0);
+  const writePayload = JSON.parse(writeMode.stdout);
+  assert.equal(writePayload.ok, true);
+  assert.equal(writePayload.count, 0);
 
   const rewrittenRaw = await fs.readFile(trackedFile, "utf8");
   const rewritten = JSON.parse(rewrittenRaw.trim());

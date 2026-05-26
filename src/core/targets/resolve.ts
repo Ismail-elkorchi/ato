@@ -45,11 +45,11 @@ const findNearestStoreBootstrap = async (
       };
     }
 
-    const legacyStore = path.join(current, ".ato");
-    if (await fileExists(path.join(legacyStore, "config.json"))) {
+    const repoStore = path.join(current, ".ato");
+    if (await fileExists(path.join(repoStore, "config.json"))) {
       return {
         rootDir: current,
-        storePath: legacyStore,
+        storePath: repoStore,
       };
     }
 

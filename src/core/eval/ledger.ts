@@ -14,7 +14,6 @@ import {
 } from "../fs.js";
 import { isIsoDate } from "../queue/transitions.js";
 import { normalizeHoldoutGateId, resolveHoldoutTasks } from "../blocks/holdout.js";
-import type { ControlGroupExpectation } from "./select.js";
 import type {
   AtoConfig,
   EvalCheckCatalogEntry,
@@ -26,7 +25,6 @@ import type {
   PackVerifyRef,
   EvalGateArtifactEvidence,
   EvalGateEvidence,
-  EvalControlGroupReason,
   EvalNegativeReport,
   EvalNegativeReportType,
   EvalOutcome,
@@ -510,18 +508,6 @@ export const normalizeEvalCycleInput = ({
       };
     }
   }
-  if (typeof source["control_group"] === "boolean") {
-    record.control_group = source["control_group"];
-  } else if (typeof source["control_group"] === "string") {
-    const lowered = source["control_group"].trim().toLowerCase();
-    if (["true", "false"].includes(lowered)) {
-      record.control_group = lowered === "true";
-    }
-  }
-  if (typeof source["control_group_reason"] === "string") {
-    const reason = source["control_group_reason"].trim();
-    if (reason) record.control_group_reason = reason as EvalControlGroupReason;
-  }
   if (typeof source["telemetry_snapshot_ref"] === "string") {
     const ref = source["telemetry_snapshot_ref"].trim();
     if (ref) record.telemetry_snapshot_ref = ref;
@@ -600,12 +586,10 @@ export const normalizeEvalCycleInput = ({
 
 export const validateEvalCycle = async ({
   record,
-  expectedSelection,
   root,
   store,
 }: {
   record: EvalCycleRecord;
-  expectedSelection: ControlGroupExpectation | null;
   root: string;
   store?: string;
 }): Promise<{ ok: boolean; errors: string[]; guidance: string[] }> => {
@@ -637,112 +621,6 @@ export const validateEvalCycle = async ({
   if (absoluteEvidence.length) {
     errors.push("evidence paths must be repo-relative (no absolute paths).");
     guidance.add("Replace absolute evidence paths with repo-relative paths.");
-  }
-
-  const expected = expectedSelection;
-  if (expected) {
-    if (expected.due) {
-      if (record.control_group !== true) {
-        errors.push("control_group must be true when control-group is due.");
-        guidance.add("Set control_group=true for due control-group cycles.");
-      }
-      if (!record.control_group_reason) {
-        errors.push(
-          "control_group_reason is required when control-group is due.",
-        );
-        guidance.add("Set control_group_reason=cadence or audit_lane.");
-      }
-      if (!record.selection_evidence) {
-        errors.push("selection_evidence is required when control-group is due.");
-        guidance.add(
-          "Include selection_evidence from `ato cycle start --json`.",
-        );
-      }
-      const selectedQueueId =
-        record.selection_evidence?.selection?.queue_id ?? null;
-      if (!record.queue_id) {
-        errors.push("queue_id is required when control-group is due.");
-        guidance.add(
-          "Set queue_id to the selected control-group queue item id.",
-        );
-      } else if (selectedQueueId && record.queue_id !== selectedQueueId) {
-        errors.push(
-          "queue_id must match selection_evidence.selection.queue_id when control-group is due.",
-        );
-      }
-    } else if (record.control_group === true) {
-      errors.push("control_group must not be true when control-group is not due.");
-      guidance.add(
-        "Omit control_group or set it to false when control-group is not due.",
-      );
-    } else if (record.control_group !== undefined) {
-      errors.push(
-        "control_group must be omitted when control-group is not due.",
-      );
-      guidance.add("Remove control_group for non-control-group cycles.");
-    }
-    if (!expected.due && record.control_group_reason !== undefined) {
-      errors.push(
-        "control_group_reason must be omitted when control-group is not due.",
-      );
-      guidance.add("Remove control_group_reason for non-control-group cycles.");
-    }
-
-    if (record.selection_evidence) {
-      const actual = record.selection_evidence;
-      if (actual.mode !== "random") {
-        errors.push("selection_evidence.mode mismatch.");
-      }
-      if (actual.due !== expected.due) {
-        errors.push("selection_evidence.due mismatch.");
-      }
-      if (actual.cycle_id !== expected.cycle_id) {
-        errors.push("selection_evidence.cycle_id mismatch.");
-      }
-      if (actual.cycle_index !== expected.cycle_index) {
-        errors.push("selection_evidence.cycle_index mismatch.");
-      }
-      if (record.cycle_index !== expected.cycle_index) {
-        errors.push("cycle_index mismatch with expected selection.");
-      }
-      if (actual.cadence !== expected.cadence) {
-        errors.push("selection_evidence.cadence mismatch.");
-      }
-      if (actual.scope !== expected.scope) {
-        errors.push("selection_evidence.scope mismatch.");
-      }
-      const actualSeed = asRecord(actual.seed);
-      if (!actualSeed) {
-        errors.push("selection_evidence.seed is required.");
-      } else {
-        const actualSource = String(actualSeed["source"] ?? "");
-        const actualValue = String(actualSeed["value"] ?? "");
-        const actualBlock = (actualSeed["block_id"] as string | null | undefined) ?? null;
-        const expectedBlock = expected.seed.block_id ?? null;
-        if (actualSource !== expected.seed.source) {
-          errors.push("selection_evidence.seed.source mismatch.");
-        }
-        if (actualValue !== expected.seed.value) {
-          errors.push("selection_evidence.seed.value mismatch.");
-        }
-        if (actualBlock !== expectedBlock) {
-          errors.push("selection_evidence.seed.block_id mismatch.");
-        }
-      }
-
-      const actualSelection = actual.selection as unknown;
-      if (expected.due) {
-        const actualSelectionObj = asRecord(actualSelection);
-        if (!actualSelectionObj) {
-          errors.push("selection_evidence.selection is required when due.");
-        } else {
-          const actualQueueId = String(actualSelectionObj["queue_id"] ?? "");
-          if (!actualQueueId) {
-            errors.push("selection_evidence.selection.queue_id is required.");
-          }
-        }
-      }
-    }
   }
 
   const gateEvidence = record.gate_evidence;
@@ -1163,6 +1041,8 @@ export const readEvalScorecard = async (
     null,
   );
   if (scorecard) return scorecard;
+  const ledgerExists = await fileExists(evalLedgerPath(store));
+  if (!ledgerExists) return computeEvalScorecard([]);
   const records = await readEvalCycles(store);
   return writeEvalScorecard({ store, records });
 };

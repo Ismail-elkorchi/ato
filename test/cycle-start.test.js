@@ -86,14 +86,6 @@ const writeBlock = async (root, { baselineTag }) => {
     version: 1,
     blockId: "block-0005",
     baseline: { tag: baselineTag },
-    rules: {
-      controlGroup: {
-        enabled: true,
-        cadenceEveryNCycles: 5,
-        selection: "random_from_evidence_pool",
-        determinism: { seedSource: "blockId" },
-      },
-    },
     holdout: {
       version: 1,
       tasks: [

@@ -5,16 +5,16 @@ import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
-import { captureEvalPreflight } from "../dist/core/eval/preflight.js";
+import { captureCyclePreflight } from "../dist/core/cycle/preflight.js";
 
 test("cycle preflight writes repo artifact with sha256", async () => {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), "ato-eval-preflight-"));
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "ato-cycle-preflight-"));
   const storeDir = ".ato";
 
   spawnSync("git", ["init"], { cwd: root, encoding: "utf8" });
   await fs.writeFile(path.join(root, "README.md"), "ok\n", "utf8");
 
-  const payload = await captureEvalPreflight({
+  const payload = await captureCyclePreflight({
     root,
     store: path.join(root, storeDir),
     targetId: "tmp",
@@ -28,7 +28,7 @@ test("cycle preflight writes repo artifact with sha256", async () => {
   assert.equal(payload.sha256, sha);
 
   const content = JSON.parse(raw);
-  assert.equal(content.schema_version, "eval-preflight.v1");
+  assert.equal(content.schema_version, "cycle-preflight.v1");
   assert.equal(content.cycle.id, "CY-0001");
   assert.equal(content.node.version, process.version);
 });

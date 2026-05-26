@@ -193,13 +193,6 @@
         }
       }
     },
-    "control_group": {
-      "type": "boolean"
-    },
-    "control_group_reason": {
-      "type": "string",
-      "enum": ["cadence", "audit_lane"]
-    },
     "telemetry_snapshot_ref": {
       "type": "string",
       "minLength": 1
@@ -235,10 +228,8 @@
       "additionalProperties": false,
       "required": [
         "mode",
-        "due",
         "cycle_id",
         "cycle_index",
-        "cadence",
         "scope",
         "seed",
         "selection",
@@ -248,20 +239,13 @@
       "properties": {
         "mode": {
           "type": "string",
-          "enum": ["random"]
-        },
-        "due": {
-          "type": "boolean"
+          "enum": ["queue"]
         },
         "cycle_id": {
           "type": "string",
           "pattern": "^CY-\\d{4,}$"
         },
         "cycle_index": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "cadence": {
           "type": "integer",
           "minimum": 1
         },

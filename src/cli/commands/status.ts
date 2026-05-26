@@ -6,7 +6,7 @@ import { readState } from "../../core/state.js";
 import { computeStatusTransition } from "../../core/state/transitions.js";
 import { fileExists, readJson } from "../../core/fs.js";
 import { gatherGitStatus } from "../../core/git/status.js";
-import { buildControlGroupExpectation, selectControlGroup } from "../../core/eval/select.js";
+import { selectCycleQueueItem } from "../../core/cycle/select.js";
 import { verifyBlockSeal } from "../../core/blocks/seal.js";
 import {
   loadBlockConfig,
@@ -14,7 +14,7 @@ import {
   resolveBlockState,
   resolveCyclesPlanned,
 } from "../../core/blocks/config.js";
-import { readEvalCycles } from "../../core/eval/ledger.js";
+import { readCycleRecords } from "../../core/cycle/store.js";
 import type { CommandContext } from "../types.js";
 
 type GitPlanSuggestion = {
@@ -144,7 +144,6 @@ export const runStatusCommand = async ({
 
   let activeCycle: Record<string, unknown> | null = null;
   let selectedQueueId: string | null = null;
-  let controlDue = false;
   let abortReason: string | null = null;
   let contractExtractRef: string | null = null;
   let selectionFailure:
@@ -177,11 +176,6 @@ export const runStatusCommand = async ({
       cycleState && typeof cycleState["started_at"] === "string"
         ? cycleState["started_at"]
         : null;
-    const controlGroupDue =
-      cycleState && typeof cycleState["control_group_due"] === "boolean"
-        ? cycleState["control_group_due"]
-        : false;
-
     const paths: Record<string, string> = {};
     const cycleStateRel = toRelativePath(target.root, cycleStatePath);
     if (cycleStateRel) paths["cycle_state"] = cycleStateRel;
@@ -223,11 +217,9 @@ export const runStatusCommand = async ({
       queue_id: queueId,
       block_id: blockId,
       started_at: startedAt,
-      control_due: controlGroupDue,
       ...(Object.keys(paths).length ? { paths } : {}),
     };
     selectedQueueId = queueId;
-    controlDue = controlGroupDue;
 
     if (blockId) {
       const blockPath = path.join(
@@ -253,16 +245,12 @@ export const runStatusCommand = async ({
       }
     }
   } else {
-    const expectation = await buildControlGroupExpectation({
-      store: target.storePath,
-      targetId: target.id,
-    });
-    controlDue = expectation.due;
     if (!missingActiveBlock) {
       try {
-        const selection = await selectControlGroup({
+        const selection = await selectCycleQueueItem({
           store: target.storePath,
           targetId: target.id,
+          blockId: activeBlockId,
         });
         selectedQueueId = selection.selection?.queue_id ?? null;
       } catch (error) {
@@ -307,9 +295,9 @@ export const runStatusCommand = async ({
     const blockConfig = await loadBlockConfig(target.storePath, activeBlockId);
     const cyclesPlanned = resolveCyclesPlanned(blockConfig);
     if (cyclesPlanned !== null) {
-      const records = await readEvalCycles(target.storePath);
+      const records = await readCycleRecords(target.storePath);
       const cyclesRecorded = records.filter(
-        (record) => record.selection_evidence?.seed?.block_id === activeBlockId,
+        (record) => record.block_id === activeBlockId,
       ).length;
       if (cyclesRecorded >= cyclesPlanned) {
         const baselineTag = resolveBaselineTag(blockConfig) ?? "baseline_block0004_v0";
@@ -398,7 +386,6 @@ export const runStatusCommand = async ({
     schema_version: "status.v2",
     active_cycle: activeCycle,
     selected_queue_id: selectedQueueId,
-    control_due: controlDue,
     active_block_id: activeBlockId,
     next_block_id: nextBlockId,
     next_action: nextAction,
@@ -427,7 +414,6 @@ export const runStatusCommand = async ({
       formatTargetLine(target),
       activeCycleId ? `active cycle: ${activeCycleId}` : "active cycle: none",
       selectedQueueId ? `queue: ${selectedQueueId}` : "queue: none",
-      `control due: ${controlDue ? "yes" : "no"}`,
       `next: ${nextAction}`,
     ];
     writeLines(lines);

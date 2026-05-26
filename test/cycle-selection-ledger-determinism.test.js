@@ -5,7 +5,7 @@ import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
-import { selectControlGroupCandidate } from "../dist/core/eval/select.js";
+import { selectCycleCandidate } from "../dist/core/cycle/select.js";
 
 const writeJson = async (filePath, value) => {
   await fs.mkdir(path.dirname(filePath), { recursive: true });
@@ -87,15 +87,6 @@ const writeBlock = async (root, { baselineTag }) => {
     version: 1,
     blockId: "block-0006",
     baseline: { tag: baselineTag },
-    rules: {
-      controlGroup: {
-        enabled: true,
-        cadenceEveryNCycles: 1,
-        selection: "random_from_evidence_pool",
-        determinism: { seedSource: "blockId" },
-        scope: "block",
-      },
-    },
     holdout: {
       version: 1,
       tasks: [
@@ -191,6 +182,39 @@ const writeQueue = async (root) => {
   await writeJsonl(path.join(root, ".ato", "queue", "items.jsonl"), items);
 };
 
+const writeLedger = async (root) => {
+  const cycles = Array.from({ length: 4 }, (_, index) => ({
+    schema_version: "cycle-record.v1",
+    id: `CY-${String(index + 1).padStart(4, "0")}`,
+    ts: `2025-01-01T00:00:${String(index).padStart(2, "0")}.000Z`,
+    block_id: "block-0006",
+    cycle_index: index + 1,
+    hypothesis: "cycle ledger identity",
+    acceptance_checks: ["cmd:echo ok"],
+    evidence: ["output:ok"],
+    outcome: "ok",
+    selection_evidence: {
+      mode: "queue",
+      cycle_id: `CY-${String(index + 1).padStart(4, "0")}`,
+      cycle_index: index + 1,
+      scope: "block",
+      seed: { source: "blockId", value: "block-0006", block_id: "block-0006" },
+      candidates: { total: 1, eligible: 1 },
+      excluded_by_reason: {
+        out_of_scope: 0,
+        status: 0,
+        deps: 0,
+        missing_evidence: 0,
+      },
+      selection: { queue_id: "BL-0001", hash: "0".repeat(64) },
+    },
+    gate_evidence: { mode: "full", result: { ok: true } },
+    preflight_evidence: { path: "AGENTS.md", sha256: "0".repeat(64) },
+    checks: [],
+  }));
+  await writeJsonl(path.join(root, ".ato", "cycles", "ledger.jsonl"), cycles);
+};
+
 const initGit = (root) => {
   const init = spawnSync("git", ["init"], { cwd: root, encoding: "utf8" });
   assert.equal(init.status, 0, init.stderr);
@@ -216,7 +240,7 @@ const commitAll = (root) => {
 };
 
 const runCycleStart = async () => {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), "ato-control-cycle-"));
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "ato-cycle-ledger-"));
   initGit(root);
   await writeAgents(root);
   await writeConfig(root);
@@ -225,6 +249,7 @@ const runCycleStart = async () => {
   await writeBaseline(root, { tag: baselineTag });
   await writeBlock(root, { baselineTag });
   await writeQueue(root);
+  await writeLedger(root);
   commitAll(root);
   tagBaseline(root, baselineTag);
 
@@ -238,7 +263,6 @@ const runCycleStart = async () => {
   assert.equal(result.status, 0, result.stderr);
   const payload = JSON.parse(result.stdout.trim());
   assert.equal(payload.ok, true);
-  assert.equal(payload.control_group, true);
 
   const selectionPath = path.join(
     root,
@@ -249,26 +273,25 @@ const runCycleStart = async () => {
   );
   const selectionRaw = await fs.readFile(selectionPath, "utf8");
   const selection = JSON.parse(selectionRaw);
-  return { selectionRaw, selection };
+  return { payload, selectionRaw, selection };
 };
 
-test("cycle start control-group selection.json is deterministic and rationale-backed", async () => {
+test("cycle selection after existing ledger records is deterministic across processes", async () => {
   const first = await runCycleStart();
   const second = await runCycleStart();
 
-  assert.equal(first.selectionRaw, second.selectionRaw);
+  const firstRationale = first.selection.selection_evidence?.rationale;
+  const secondRationale = second.selection.selection_evidence?.rationale;
+  assert.ok(firstRationale);
+  assert.ok(secondRationale);
+  assert.equal(first.selection.selection_evidence?.cycle_id, first.payload.cycle_id);
 
-  const rationale = first.selection.selection_evidence?.rationale;
-  assert.ok(rationale);
-  assert.deepEqual(rationale.pool_ids, ["BL-0001", "BL-0002"]);
+  assert.equal(JSON.stringify(firstRationale), JSON.stringify(secondRationale));
+  assert.deepEqual(firstRationale.pool_ids, ["BL-0001", "BL-0002"]);
 
-  const expected = selectControlGroupCandidate({
+  const expected = selectCycleCandidate({
     seed: "block-0006",
     poolIds: ["BL-0002", "BL-0001"],
   });
-  assert.deepEqual(rationale, expected);
-  const chosenId = first.selection.selection?.selection?.queue_id;
-  const evidenceChosenId = first.selection.selection_evidence?.selection?.queue_id;
-  assert.equal(chosenId, evidenceChosenId);
-  assert.equal(chosenId, expected?.chosen_id);
+  assert.deepEqual(firstRationale, expected);
 });

@@ -67,7 +67,6 @@ test("status reports active cycle with relative paths", async () => {
     cycle_id: cycleId,
     queue_id: "BL-0001",
     started_at: "2026-01-01T00:00:00.000Z",
-    control_group_due: false,
     block_id: "block-0005",
     selection_path: ".ato/cycles/CY-0001/selection.json",
     preflight: { path: ".ato/cycles/CY-0001/preflight.json", sha256: "" },
@@ -94,7 +93,6 @@ test("status reports active cycle with relative paths", async () => {
   assert.equal("intent_summary" in payload, false);
   assert.equal("intent" in payload, false);
   assert.equal(payload.selected_queue_id, "BL-0001");
-  assert.equal(payload.control_due, false);
   assert.equal(
     payload.next_action,
     "ato cycle abort --reason \"block config missing (block-0005)\" --json",

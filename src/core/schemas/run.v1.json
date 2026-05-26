@@ -22,7 +22,7 @@
         "reflect",
         "pack",
         "lint",
-        "eval_init",
+        "cycle_record",
         "eval_cycle_record"
       ]
     },

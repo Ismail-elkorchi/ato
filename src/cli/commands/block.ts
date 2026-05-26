@@ -21,10 +21,9 @@ import {
   stableStringify,
   writeJson as writeJsonFile,
 } from "../../core/fs.js";
-import { readEvalCycles } from "../../core/eval/ledger.js";
+import { readCycleRecords } from "../../core/cycle/store.js";
 import { isIsoDate } from "../../core/queue/transitions.js";
-import type { JsonValue } from "../../core/types.js";
-import type { EvalCycleRecord } from "../../core/types.js";
+import type { CycleRecord, JsonValue } from "../../core/types.js";
 import type { CommandContext } from "../types.js";
 
 const HELP = [
@@ -55,8 +54,8 @@ const hashFileSha256 = async (filePath: string): Promise<string> => {
 const hashStringSha256 = (value: string): string =>
   crypto.createHash("sha256").update(value).digest("hex");
 
-const recordMatchesBlock = (record: EvalCycleRecord, blockId: string): boolean =>
-  record.selection_evidence?.seed?.block_id === blockId;
+const recordMatchesBlock = (record: CycleRecord, blockId: string): boolean =>
+  record.block_id === blockId;
 
 const resolveClosureTimestamp = async ({
   store,
@@ -65,7 +64,7 @@ const resolveClosureTimestamp = async ({
   store: string;
   blockId: string;
 }): Promise<string> => {
-  const records = await readEvalCycles(store);
+  const records = await readCycleRecords(store);
   const timestamps = records
     .filter((record) => recordMatchesBlock(record, blockId))
     .map((record) => record.ts)

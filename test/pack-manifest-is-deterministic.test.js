@@ -4,7 +4,7 @@ import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { buildCycleEvidencePack } from "../dist/core/eval/pack.js";
+import { buildCycleEvidencePack } from "../dist/core/cycle/pack.js";
 
 test("cycle pack manifest and tar are deterministic", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "ato-pack-determinism-"));

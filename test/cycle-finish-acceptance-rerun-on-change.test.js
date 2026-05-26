@@ -131,14 +131,6 @@ const writeBlock = async (root, baselineTag) => {
     blockId: "block-0005",
     baseline: { tag: baselineTag },
     cyclesPlanned: 1,
-    rules: {
-      controlGroup: {
-        enabled: true,
-        cadenceEveryNCycles: 5,
-        selection: "random_from_evidence_pool",
-        determinism: { seedSource: "blockId" },
-      },
-    },
     holdout: {
       version: 1,
       tasks: [{ id: "holdout-target-resolve", cmd: [process.execPath, "-e", "process.exit(0)"] }],

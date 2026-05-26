@@ -141,6 +141,82 @@ export type JsonlRecord<T = JsonValue> = {
   item: T;
 };
 
+export type CycleOutcome = "ok" | "fail" | "inconclusive" | "unknown";
+
+export type CycleSelectionEvidence = {
+  mode: "queue";
+  cycle_id: string;
+  cycle_index: number;
+  scope: "block" | "global";
+  seed: {
+    source: string;
+    value: string;
+    block_id?: string | null;
+  };
+  rationale?: {
+    seed: string;
+    pool_ids: string[];
+    chosen_id: string;
+    rule: string;
+    hash: string;
+  } | null;
+  excluded_by_reason: {
+    out_of_scope: number;
+    status: number;
+    deps: number;
+    missing_evidence: number;
+  };
+  selection: { queue_id: string; hash: string } | null;
+  candidates: { total: number; eligible: number };
+};
+
+export type CycleGateArtifactEvidence = {
+  path: string;
+  sha256: string;
+};
+
+export type CycleGateEvidence = {
+  mode: "full";
+  result?: { ok: boolean };
+  artifacts?: CycleGateArtifactEvidence[];
+  obligations_hash?: string;
+  run_ref?: { path: string; line: number };
+};
+
+export type CyclePreflightEvidence = {
+  path: string;
+  sha256: string;
+};
+
+export type CycleCheckRecord = {
+  id: string;
+  command: string;
+  kind?: string;
+  status?: "ok" | "fail" | "skipped" | "unknown";
+  exitCode?: number;
+  durationMs?: number;
+  artifacts?: string[];
+};
+
+export type CycleRecord = {
+  schema_version: "cycle-record.v1";
+  id: string;
+  ts: string;
+  queue_id?: string;
+  block_id?: string;
+  cycle_index: number;
+  hypothesis: string;
+  acceptance_checks: string[];
+  evidence: string[];
+  outcome: CycleOutcome;
+  selection_evidence: CycleSelectionEvidence;
+  gate_evidence: CycleGateEvidence;
+  preflight_evidence: CyclePreflightEvidence;
+  pack_ref?: CyclePackRef;
+  pack_verify_ref?: PackVerifyRef;
+  checks: CycleCheckRecord[];
+};
+
 export type LessonItem = {
   id: string;
   tool?: string;
@@ -306,7 +382,6 @@ export type SignalDefinitionCatalog = SignalDefinition[];
 
 export type EvalOutcome = "ok" | "fail" | "inconclusive" | "unknown";
 export type EvalNegativeReportType = "regression" | "miss" | "cost" | "inconclusive";
-export type EvalControlGroupReason = "cadence" | "audit_lane";
 
 export type EvalNegativeReport = {
   type: EvalNegativeReportType;
@@ -340,34 +415,7 @@ export type EvalSelectionOverride = {
   evidence: string[];
 };
 
-export type EvalSelectionEvidence = {
-  mode: "random";
-  due: boolean;
-  cycle_id: string;
-  cycle_index: number;
-  cadence: number;
-  scope: "block" | "global";
-  seed: {
-    source: string;
-    value: string;
-    block_id?: string | null;
-  };
-  rationale?: {
-    seed: string;
-    pool_ids: string[];
-    chosen_id: string;
-    rule: string;
-    hash: string;
-  } | null;
-  excluded_by_reason: {
-    out_of_scope: number;
-    status: number;
-    deps: number;
-    missing_evidence: number;
-  };
-  selection: { queue_id: string; hash: string } | null;
-  candidates: { total: number; eligible: number };
-};
+export type EvalSelectionEvidence = CycleSelectionEvidence;
 
 export type EvalGateArtifactEvidence = {
   path: string;
@@ -431,8 +479,6 @@ export type EvalCycleRecord = {
   seeding_result: EvalSeedingResult;
   supersedes?: EvalSupersedes;
   override?: EvalSelectionOverride;
-  control_group?: boolean;
-  control_group_reason?: EvalControlGroupReason;
   telemetry_snapshot_ref?: string;
   telemetry_summary?: {
     tokens_total: number;
@@ -511,7 +557,7 @@ export type RunLogEntry = {
     | "self_update"
     | "self_rollback"
     | "dev_run"
-    | "eval_init"
+    | "cycle_record"
     | "eval_cycle_record";
   target_id: string;
   queue_id?: string;

@@ -8,7 +8,7 @@ import { spawnSync } from "node:child_process";
 import {
   buildCycleEvidencePack,
   verifyCycleEvidencePack,
-} from "../dist/core/eval/pack.js";
+} from "../dist/core/cycle/pack.js";
 
 const writeJson = async (filePath, value) => {
   await fs.mkdir(path.dirname(filePath), { recursive: true });
@@ -48,14 +48,6 @@ const writeBlock = async (
     blockId: "block-0005",
     frozen: true,
     baseline: { tag: "baseline-test" },
-    rules: {
-      controlGroup: {
-        enabled: true,
-        cadenceEveryNCycles: 5,
-        selection: "random_from_evidence_pool",
-        determinism: { seedSource: "blockId" },
-      },
-    },
     holdout: { version: 1, tasks: [] },
   };
   if (includeCyclesPlanned) {
@@ -158,25 +150,15 @@ const setupReportFixture = async ({
   }
 
   const recordBase = {
+    schema_version: "cycle-record.v1",
+    block_id: "block-0005",
     hypothesis: "report test",
     acceptance_checks: ["cmd:echo ok"],
     evidence: ["file:.ato/cycles/CY-0001/preflight.json"],
-    negative_report: {
-      type: "cost",
-      summary: "cost",
-      evidence: ["file:.ato/cycles/CY-0001/preflight.json"],
-    },
-    seeding_result: {
-      outcome: "no_seed",
-      summary: "no seed",
-      evidence: ["file:.ato/cycles/CY-0001/preflight.json"],
-    },
     selection_evidence: {
-      mode: "random",
-      due: false,
+      mode: "queue",
       cycle_id: "CY-0001",
       cycle_index: 1,
-      cadence: 5,
       scope: "block",
       seed: { source: "blockId", value: "block-0005", block_id: "block-0005" },
       candidates: { total: 1, eligible: 1 },
@@ -206,7 +188,7 @@ const setupReportFixture = async ({
     checks: [],
   };
 
-  const makeRecord = ({ id, ts, cycleIndex, outcome, controlGroup }) => ({
+  const makeRecord = ({ id, ts, cycleIndex, outcome }) => ({
     ...recordBase,
     id,
     ts,
@@ -214,7 +196,6 @@ const setupReportFixture = async ({
     outcome,
     pack_ref: packRefs[id],
     pack_verify_ref: packVerifyRefs[id],
-    ...(controlGroup ? { control_group: true, control_group_reason: "cadence" } : {}),
     selection_evidence: {
       ...recordBase.selection_evidence,
       cycle_id: id,
@@ -223,7 +204,7 @@ const setupReportFixture = async ({
   });
 
   const records = recordSpecs.map((spec) => makeRecord(spec));
-  await writeJsonl(path.join(root, ".ato", "eval", "ledger.jsonl"), records);
+  await writeJsonl(path.join(root, ".ato", "cycles", "ledger.jsonl"), records);
   commitAll(root);
 
   return { root };
@@ -335,25 +316,15 @@ test("block report counts ledger denominators", async () => {
   }
 
   const recordBase = {
+    schema_version: "cycle-record.v1",
+    block_id: "block-0005",
     hypothesis: "report test",
     acceptance_checks: ["cmd:echo ok"],
     evidence: ["file:.ato/cycles/CY-0001/preflight.json"],
-    negative_report: {
-      type: "cost",
-      summary: "cost",
-      evidence: ["file:.ato/cycles/CY-0001/preflight.json"],
-    },
-    seeding_result: {
-      outcome: "no_seed",
-      summary: "no seed",
-      evidence: ["file:.ato/cycles/CY-0001/preflight.json"],
-    },
     selection_evidence: {
-      mode: "random",
-      due: false,
+      mode: "queue",
       cycle_id: "CY-0001",
       cycle_index: 1,
-      cadence: 5,
       scope: "block",
       seed: { source: "blockId", value: "block-0005", block_id: "block-0005" },
       candidates: { total: 1, eligible: 1 },
@@ -378,7 +349,7 @@ test("block report counts ledger denominators", async () => {
     checks: [],
   };
 
-  const makeRecord = ({ id, ts, cycleIndex, outcome, controlGroup }) => ({
+  const makeRecord = ({ id, ts, cycleIndex, outcome }) => ({
     ...recordBase,
     id,
     ts,
@@ -386,7 +357,6 @@ test("block report counts ledger denominators", async () => {
     outcome,
     pack_ref: packRefs[id],
     pack_verify_ref: packVerifyRefs[id],
-    ...(controlGroup ? { control_group: true, control_group_reason: "cadence" } : {}),
     selection_evidence: {
       ...recordBase.selection_evidence,
       cycle_id: id,
@@ -400,17 +370,15 @@ test("block report counts ledger denominators", async () => {
       ts: "2025-01-01T00:00:00.000Z",
       cycleIndex: 1,
       outcome: "ok",
-      controlGroup: true,
     }),
     makeRecord({
       id: "CY-0002",
       ts: "2025-01-01T00:05:00.000Z",
       cycleIndex: 2,
       outcome: "fail",
-      controlGroup: false,
     }),
   ];
-  await writeJsonl(path.join(root, ".ato", "eval", "ledger.jsonl"), records);
+  await writeJsonl(path.join(root, ".ato", "cycles", "ledger.jsonl"), records);
 
   commitAll(root);
 
@@ -431,7 +399,6 @@ test("block report counts ledger denominators", async () => {
   assert.equal(report.cycles_pack_verify_failed_total, 0);
   assert.equal(report.missing_packs.length, 0);
   assert.equal(report.pack_verify_failures.length, 0);
-  assert.equal(report.control_group_cycles_total, 1);
   assert.equal(report.closeout_integrity.mode, "open_block");
   assert.equal(report.closeout_integrity.closure_present, false);
   assert.equal(report.closeout_integrity.report_present, null);
@@ -449,14 +416,12 @@ test("block report treats over-plan cycles as warning and is deterministic", asy
         ts: "2025-01-01T00:00:00.000Z",
         cycleIndex: 1,
         outcome: "ok",
-        controlGroup: true,
       },
       {
         id: "CY-0002",
         ts: "2025-01-01T00:05:00.000Z",
         cycleIndex: 2,
         outcome: "fail",
-        controlGroup: false,
       },
     ],
   });
@@ -490,7 +455,6 @@ test("block report marks missing cyclesPlanned as consistency error", async () =
         ts: "2025-01-01T00:00:00.000Z",
         cycleIndex: 1,
         outcome: "ok",
-        controlGroup: false,
       },
     ],
   });
@@ -519,14 +483,12 @@ test("block close produces deterministic closure payload", async () => {
       ts: "2025-01-01T00:00:00.000Z",
       cycleIndex: 1,
       outcome: "ok",
-      controlGroup: false,
     },
     {
       id: "CY-0002",
       ts: "2025-01-01T00:05:00.000Z",
       cycleIndex: 2,
       outcome: "ok",
-      controlGroup: false,
     },
   ];
 
@@ -565,7 +527,6 @@ test("block report fails on closure report_ref sha mismatch", async () => {
         ts: "2025-01-01T00:00:00.000Z",
         cycleIndex: 1,
         outcome: "ok",
-        controlGroup: false,
       },
     ],
   });
@@ -625,7 +586,6 @@ test("block report passes closeout integrity when closure and report_ref match",
         ts: "2025-01-01T00:00:00.000Z",
         cycleIndex: 1,
         outcome: "ok",
-        controlGroup: false,
       },
     ],
   });
@@ -669,14 +629,12 @@ test("block close succeeds over plan and preserves warning", async () => {
         ts: "2025-01-01T00:00:00.000Z",
         cycleIndex: 1,
         outcome: "ok",
-        controlGroup: false,
       },
       {
         id: "CY-0002",
         ts: "2025-01-01T00:05:00.000Z",
         cycleIndex: 2,
         outcome: "ok",
-        controlGroup: false,
       },
     ],
   });
@@ -710,7 +668,6 @@ test("block close refuses when report is not ok", async () => {
         ts: "2025-01-01T00:00:00.000Z",
         cycleIndex: 1,
         outcome: "ok",
-        controlGroup: false,
       },
     ],
   });

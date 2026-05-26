@@ -34,14 +34,6 @@ const writeBlock = async (root) => {
     blockId: "block-0005",
     frozen: true,
     baseline: { tag: "baseline-test" },
-    rules: {
-      controlGroup: {
-        enabled: true,
-        cadenceEveryNCycles: 5,
-        selection: "random_from_evidence_pool",
-        determinism: { seedSource: "blockId" },
-      },
-    },
   });
 };
 

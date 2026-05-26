@@ -84,7 +84,7 @@ const HELP = [
   "  lint terms|protocol",
   "  status",
   "  cycle start|finish|abort",
-  "  eval scorecard",
+  "  eval scorecard|cycle|pack",
   "",
   "Global options:",
   "  --repo <id|path>     Repo id or root path",
@@ -134,7 +134,7 @@ const TOP_LEVEL_COMMAND_HELP: Record<string, string[]> = {
   lint: ["Usage: ato lint terms|protocol [options]"],
   status: ["Usage: ato status [options]"],
   cycle: ["Usage: ato cycle start|finish|abort [options]"],
-  eval: ["Usage: ato eval scorecard [options]"],
+  eval: ["Usage: ato eval scorecard|cycle|pack [options]"],
 };
 
 const parseGlobal = (argv: string[]) => {

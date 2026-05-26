@@ -360,7 +360,7 @@ const resolveTargetContext = async ({
 const ensureProtocol = async (root) => {
   const result = await checkProtocolCompatibility(root);
   if (!result.ok) {
-    const error = new Error("Protocol compatibility check failed.");
+    const error = new Error("Protocol version check failed.");
     error.details = result;
     throw error;
   }
