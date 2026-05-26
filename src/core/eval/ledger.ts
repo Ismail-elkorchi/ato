@@ -380,16 +380,6 @@ export const readEvalCycles = async (store: string): Promise<EvalCycleRecord[]> 
   return records.map((record) => annotateEvalCycleIntegrity(record.item));
 };
 
-export const nextEvalCycleId = (records: EvalCycleRecord[]): string => {
-  let max = 0;
-  for (const record of records) {
-    const match = String(record.id ?? "").match(/^CY-(\d+)$/);
-    if (!match) continue;
-    max = Math.max(max, Number(match[1]));
-  }
-  return `CY-${String(max + 1).padStart(4, "0")}`;
-};
-
 export const normalizeEvalCycleInput = ({
   input,
   fallbackId,
