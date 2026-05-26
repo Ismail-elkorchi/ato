@@ -26,16 +26,8 @@
     "LICENSE"
   ],
   "dependencies": {
-    "@ismail-elkorchi/ui-primitives": "^0.1.2",
-    "@ismail-elkorchi/ui-shell": "^0.1.2",
-    "@ismail-elkorchi/ui-tokens": "^0.1.2",
     "ajv": "^8.17.1",
-    "@lit/reactive-element": "^2.1.0",
-    "lit": "^3.3.2",
-    "lit-element": "^4.2.0",
-    "lit-html": "^3.3.0",
-    "tiktoken": "^1.0.21",
-    "typescript": "^5.9.3"
+    "tiktoken": "^1.0.21"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
@@ -45,6 +37,7 @@
     "eslint-plugin-import": "^2.32.0",
     "globals": "^16.5.0",
     "prettier": "^3.7.4",
+    "typescript": "^5.9.3",
     "typescript-eslint": "^8.50.1"
   }
 }

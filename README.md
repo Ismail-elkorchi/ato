@@ -16,7 +16,7 @@ Make agentic work more reliable by giving agents a small, inspectable operating 
 
 ## Current Status
 
-ATO is at its public starting point. The repository begins with a minimal TypeScript CLI scaffold and will grow in small, testable increments.
+ATO is at its public starting point. The repository begins with a minimal TypeScript CLI and will grow in small, testable increments.
 
 ## Quick Start
 

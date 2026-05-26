@@ -38,15 +38,6 @@ const writeCatalog = async (root, entries) => {
   await writeJson(path.join(root, ".ato", "signals", "definitions.json"), entries);
 };
 
-const writeState = async (root, cycleId) => {
-  await writeJson(path.join(root, ".ato", "state.json"), {
-    version: 1,
-    activeCycleId: cycleId,
-    activeCycleQueueId: "BL-0001",
-    activeCycleStartedAt: "2025-01-01T00:00:00.000Z",
-  });
-};
-
 const runBbShow = (root) => {
   const cliPath = path.resolve("dist/cli/main.js");
   return spawnSync(
@@ -82,32 +73,16 @@ test("bb show orders signals deterministically and includes evidence", async () 
       evidence_format: "log",
       action_rule: "none",
     },
-    {
-      name: "agent_total_tokens",
-      type: "agent_telemetry",
-      source: "test",
-      collection_method: "report",
-      evidence_format: "log",
-      action_rule: "none",
-    },
-    {
-      name: "telemetry_missing",
-      type: "agent_telemetry",
-      source: "test",
-      collection_method: "report",
-      evidence_format: "log",
-      action_rule: "none",
-    },
   ]);
 
   const first = runBbShow(root);
   assert.equal(first.status, 0, first.stderr);
   const firstPayload = JSON.parse(first.stdout);
-  assert.equal(firstPayload.schema_version, "bb-show.v2");
+  assert.equal(firstPayload.schema_version, "bb-show.v3");
   const firstSignals = firstPayload.signals ?? [];
   assert.deepEqual(
     firstSignals.map((signal) => signal.kind),
-    ["a_signal", "b_signal", "telemetry_missing"],
+    ["a_signal", "b_signal"],
   );
 
   const second = runBbShow(root);
@@ -116,7 +91,7 @@ test("bb show orders signals deterministically and includes evidence", async () 
   const secondSignals = secondPayload.signals ?? [];
   assert.deepEqual(
     secondSignals.map((signal) => signal.kind),
-    ["a_signal", "b_signal", "telemetry_missing"],
+    ["a_signal", "b_signal"],
   );
 
   const evidence = firstSignals[0]?.evidence ?? [];
@@ -138,22 +113,6 @@ test("bb show refuses unknown signals", async () => {
       evidence_format: "log",
       action_rule: "none",
     },
-    {
-      name: "agent_total_tokens",
-      type: "agent_telemetry",
-      source: "test",
-      collection_method: "report",
-      evidence_format: "log",
-      action_rule: "none",
-    },
-    {
-      name: "telemetry_missing",
-      type: "agent_telemetry",
-      source: "test",
-      collection_method: "report",
-      evidence_format: "log",
-      action_rule: "none",
-    },
   ]);
 
   const result = runBbShow(root);
@@ -166,38 +125,4 @@ test("bb show refuses unknown signals", async () => {
       String(entry).includes("Unknown signal 'unknown_signal'"),
     ),
   );
-});
-
-test("bb show prefers cycle-scoped telemetry evidence when cycle is active", async () => {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), "ato-bb-show-"));
-  await writeAgents(root);
-  await writeConfig(root, []);
-  await writeCatalog(root, [
-    {
-      name: "agent_total_tokens",
-      type: "agent_telemetry",
-      source: "test",
-      collection_method: "report",
-      evidence_format: "log",
-      action_rule: "none",
-    },
-    {
-      name: "telemetry_missing",
-      type: "agent_telemetry",
-      source: "test",
-      collection_method: "report",
-      evidence_format: "log",
-      action_rule: "none",
-    },
-  ]);
-  await writeState(root, "CY-TEST");
-
-  const show = runBbShow(root);
-  assert.equal(show.status, 0, show.stderr);
-  const payload = JSON.parse(show.stdout);
-  const telemetrySignal = (payload.signals ?? []).find(
-    (signal) => signal.kind === "telemetry_missing",
-  );
-  assert.ok(telemetrySignal, "telemetry_missing signal missing");
-  assert.equal(payload.telemetry?.cycle_id, "CY-TEST");
 });

@@ -36,24 +36,7 @@ const writeConfig = async (root) => {
 };
 
 const writeCatalog = async (root) => {
-  await writeJson(path.join(root, ".ato", "signals", "definitions.json"), [
-    {
-      name: "agent_total_tokens",
-      type: "agent_telemetry",
-      source: "test",
-      collection_method: "report",
-      evidence_format: "log",
-      action_rule: "none",
-    },
-    {
-      name: "telemetry_missing",
-      type: "agent_telemetry",
-      source: "test",
-      collection_method: "report",
-      evidence_format: "log",
-      action_rule: "none",
-    },
-  ]);
+  await writeJson(path.join(root, ".ato", "signals", "definitions.json"), []);
 };
 
 const runCli = (root, args) => {
@@ -68,32 +51,6 @@ const hashFile = async (filePath) => {
   const content = await fs.readFile(filePath);
   return crypto.createHash("sha256").update(content).digest("hex");
 };
-
-test("bb snapshot is removed and does not write files", async () => {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), "ato-bb-snapshot-"));
-  await writeAgents(root);
-  await writeConfig(root);
-  await writeCatalog(root);
-
-  const result = runCli(root, ["bb", "snapshot", "--json"]);
-  assert.notEqual(result.status, 0);
-
-  const blackboardDir = path.join(root, ".ato", "blackboard");
-  await assert.rejects(fs.stat(blackboardDir));
-});
-
-test("bb note add is removed and does not write files", async () => {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), "ato-bb-note-"));
-  await writeAgents(root);
-  await writeConfig(root);
-  await writeCatalog(root);
-
-  const result = runCli(root, ["bb", "note", "add", "--text", "hi", "--json"]);
-  assert.notEqual(result.status, 0);
-
-  const blackboardDir = path.join(root, ".ato", "blackboard");
-  await assert.rejects(fs.stat(blackboardDir));
-});
 
 test("bb post succeeds even when a lock file exists", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "ato-bb-lock-"));

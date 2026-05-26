@@ -248,116 +248,6 @@ export type RunLogCommand = {
   durationMs: number;
 };
 
-export type TelemetryCodexSessionCounts = {
-  messages_user: number;
-  messages_assistant: number;
-  tool_calls: number;
-  shell_commands: number;
-  errors: number;
-};
-
-export type TelemetryCodexSessionSummary = {
-  schema_version: "agent-session.v1";
-  source: "codex";
-  session_id: string;
-  originator: string | null;
-  model_provider: string | null;
-  model: string | null;
-  cli_version: string | null;
-  git_commit_hash: string | null;
-  git_branch: string | null;
-  cwd_rel?: string;
-  cwd_hash?: string;
-  started_at: string | null;
-  ended_at: string | null;
-  counts: TelemetryCodexSessionCounts;
-  rate_limit_info_present: boolean;
-  instructions_hash?: string;
-  repo: {
-    git_commit_hash: string | null;
-    branch: string | null;
-    cwd_hint: string | null;
-  };
-  runtime: {
-    model: string | null;
-    cli_version: string | null;
-    originator: string | null;
-    sandbox_mode: string | null;
-    approval_policy: string | null;
-  };
-  token_summary: Record<string, number | string>;
-  rate_limit_summary?: {
-    primary_used_percent?: number;
-    secondary_used_percent?: number;
-    has_credits: boolean;
-  };
-  command_summary: Array<{
-    kind: string;
-    command_hash: string;
-    exit_code?: number;
-    output_bytes?: number;
-  }>;
-  integrity: {
-    source_file_hash: string;
-    redaction_profile_id: string;
-    warnings: string[];
-  };
-};
-
-export type TelemetryCodexIngestResult = {
-  ok: boolean;
-  schema_version: "telemetry-ingest.v1";
-  source: "codex";
-  path: string;
-  counts: {
-    files_scanned: number;
-    sessions_ingested: number;
-    sessions_skipped: number;
-    summaries_written: number;
-    index_written: boolean;
-  };
-  outputs: {
-    index: { path: string; sha256: string };
-    summaries: Array<{ session_id: string; path: string; sha256: string }>;
-  };
-  skipped?: Array<{ path: string; reason: string }>;
-};
-
-export type TelemetrySignalMetrics = {
-  input_tokens: number;
-  output_tokens: number;
-  cached_input_tokens: number;
-  total_tokens: number;
-  context_window: number;
-  tool_calls_count: number;
-  error_count: number;
-  latency_ms?: number;
-};
-
-export type TelemetrySignalPoint = {
-  ts?: string | null;
-  source: "codex";
-  scope: {
-    block_id?: string;
-    cycle_id?: string;
-    run_id?: string;
-    commit?: string;
-  };
-  metrics: TelemetrySignalMetrics;
-  extensions?: Record<string, JsonValue>;
-};
-
-export type TelemetrySignalReport = {
-  source: "codex";
-  period:
-    | { from: string | null; to: string | null }
-    | { block_id: string };
-  counts: { sessions_total: number };
-  totals: TelemetrySignalMetrics;
-  averages: TelemetrySignalMetrics;
-  extensions?: Record<string, JsonValue>;
-};
-
 export type SignalDefinitionType =
   | "reliability"
   | "cost"
@@ -409,12 +299,7 @@ export type RunLogEntry = {
     | "reflect"
     | "pack"
     | "lint"
-    | "refactor"
-    | "scaffold"
-    | "fixture"
     | "trace"
-    | "self_update"
-    | "self_rollback"
     | "dev_run"
     | "cycle_record";
   target_id: string;

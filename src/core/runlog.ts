@@ -24,11 +24,3 @@ export const getArtifactsDir = (
   const group = kind ? kind : "run";
   return path.join(base, scope, group);
 };
-
-export const getRollbackDir = (store: string, rollbackId: string): string =>
-  path.join(store, "runs", "rollback", rollbackId);
-
-export const getRollbackBundlePath = (
-  store: string,
-  rollbackId: string,
-): string => path.join(getRollbackDir(store, rollbackId), "bundle.json");

@@ -37,24 +37,7 @@ const writeConfig = async (root, seed) => {
 };
 
 const writeCatalog = async (root) => {
-  await writeJson(path.join(root, ".ato", "signals", "definitions.json"), [
-    {
-      name: "agent_total_tokens",
-      type: "agent_telemetry",
-      source: "test",
-      collection_method: "report",
-      evidence_format: "log",
-      action_rule: "none",
-    },
-    {
-      name: "telemetry_missing",
-      type: "agent_telemetry",
-      source: "test",
-      collection_method: "report",
-      evidence_format: "log",
-      action_rule: "none",
-    },
-  ]);
+  await writeJson(path.join(root, ".ato", "signals", "definitions.json"), []);
 };
 
 const runCli = (root, args) => {

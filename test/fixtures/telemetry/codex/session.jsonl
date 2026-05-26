@@ -1,7 +1,0 @@
-{"type":"session_meta","payload":{"session_id":"sess-001","originator":"codex","model_provider":"openai","model":"gpt-4o-mini","cli_version":"0.1.0","git_commit_hash":"deadbeef","git_branch":"main","cwd":"/home/testuser/secret/project","sandbox_mode":"danger-full-access","approval_policy":"never","instructions":"TOP SECRET INSTRUCTIONS","rate_limit":{"primary_used_percent":42,"secondary_used_percent":7},"credits":{"balance":12.34},"started_at":"2026-01-01T00:00:00.000Z","ended_at":"2026-01-01T00:01:00.000Z"}}
-{"type":"token_count","total_token_usage":{"input_tokens":120,"cached_input_tokens":20,"output_tokens":60,"reasoning_output_tokens":5,"total_tokens":180,"context_window":8192}}
-{"type":"tool_call","name":"search","arguments":{"q":"codex"}}
-{"type":"shell_command","command":["echo","hello"],"exit_code":0,"stdout":"ok"}
-{"type":"shell_command","command":"false","exit_code":1,"stderr":"fail"}
-{"type":"response_item","role":"user"}
-{"type":"response_item","role":"assistant"}

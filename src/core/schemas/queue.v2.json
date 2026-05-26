@@ -129,7 +129,7 @@
     },
     "owner": {
       "type": "string",
-      "default": "codex"
+      "default": "agent"
     },
     "notes": {
       "type": "string"

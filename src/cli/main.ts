@@ -6,7 +6,6 @@ import { runGateCommand } from "./commands/gate.js";
 import { runPackCommand } from "./commands/pack.js";
 import { runReflectCommand } from "./commands/reflect.js";
 import { runContractCommand } from "./commands/contract.js";
-import { runDashboardCommand } from "./commands/dashboard.js";
 import { runRouteCommand } from "./commands/route.js";
 import { runBlackboardCommand } from "./commands/bb.js";
 import { runLintCommand } from "./commands/lint.js";
@@ -17,21 +16,16 @@ import { runLessonCommand } from "./commands/lesson.js";
 import { runPatternCommand } from "./commands/pattern.js";
 import { runInitCommand } from "./commands/init.js";
 import { runDiagnoseCommand } from "./commands/diagnose.js";
-import { runSelfCommand } from "./commands/self.js";
 import { runCapabilityCommand } from "./commands/capability.js";
 import { runPluginCommand } from "./commands/plugin.js";
 import { runBaselineCommand } from "./commands/baseline.js";
 import { runBlockCommand } from "./commands/block.js";
 import { runDevCommand } from "./commands/dev.js";
 import { runImpactCommand } from "./commands/impact.js";
-import { runRefactorCommand } from "./commands/refactor.js";
 import { runTestCommand } from "./commands/qa.js";
-import { runScaffoldCommand } from "./commands/scaffold.js";
-import { runFixtureCommand } from "./commands/fixture.js";
 import { runTraceCommand } from "./commands/trace.js";
 import { runDepsCommand } from "./commands/deps.js";
 import { runDocsCommand } from "./commands/docs.js";
-import { runTelemetryCommand } from "./commands/telemetry.js";
 import { runSignalCommand } from "./commands/signal.js";
 import { runLockCommand } from "./commands/lock.js";
 import { runGitCommand } from "./commands/git.js";
@@ -55,7 +49,6 @@ const HELP = [
   "  lesson add",
   "  pattern add|apply",
   "  pack [verify]",
-  "  self update|rollback",
   "  diagnose",
   "  capability list|explain",
   "  baseline verify",
@@ -68,15 +61,10 @@ const HELP = [
   "  git status|locks|plan clean|plan commit|plan stash|plan restore",
   "  docs delta|truth",
   "  session closeout",
-  "  telemetry codex ingest|report",
   "  signal definition list|validate",
   "  memory snapshot|show|query|build|record|run|link|commit|list|resolve",
   "  impact build|query",
-  "  refactor rename|rollback",
-  "  fixture generate",
-  "  scaffold",
   "  test select",
-  "  dashboard build|serve",
   "  route index|pack",
   "  bb show|post|export|import",
   "  protocol check",
@@ -104,7 +92,6 @@ const TOP_LEVEL_COMMAND_HELP: Record<string, string[]> = {
   lesson: ["Usage: ato lesson add [options]"],
   pattern: ["Usage: ato pattern add|apply [options]"],
   pack: ["Usage: ato pack [verify] [options]"],
-  self: ["Usage: ato self update|rollback [options]"],
   diagnose: ["Usage: ato diagnose [options]"],
   capability: ["Usage: ato capability list|explain [options]"],
   baseline: ["Usage: ato baseline verify [options]"],
@@ -117,15 +104,10 @@ const TOP_LEVEL_COMMAND_HELP: Record<string, string[]> = {
   git: ["Usage: ato git status|locks|plan clean|plan commit|plan stash|plan restore [options]"],
   docs: ["Usage: ato docs delta|truth [options]"],
   session: ["Usage: ato session closeout [options]"],
-  telemetry: ["Usage: ato telemetry codex ingest|report [options]"],
   signal: ["Usage: ato signal definition list|validate [options]"],
   memory: ["Usage: ato memory snapshot|show|query|build|record|run|link|commit|list|resolve [options]"],
   impact: ["Usage: ato impact build|query [options]"],
-  refactor: ["Usage: ato refactor rename|rollback [options]"],
-  fixture: ["Usage: ato fixture generate [options]"],
-  scaffold: ["Usage: ato scaffold --input <json|path> [--dry-run]"],
   test: ["Usage: ato test select [options]"],
-  dashboard: ["Usage: ato dashboard build|serve [options]"],
   route: ["Usage: ato route index|pack [options]"],
   bb: ["Usage: ato bb show|post|export|import [options]"],
   protocol: ["Usage: ato protocol check [options]"],
@@ -318,9 +300,6 @@ const run = async (): Promise<void> => {
       case "block":
         await runBlockCommand({ subcommand, args, context });
         break;
-      case "dashboard":
-        await runDashboardCommand({ subcommand, args, context });
-        break;
       case "route":
         await runRouteCommand({ subcommand, args, context });
         break;
@@ -358,9 +337,6 @@ const run = async (): Promise<void> => {
           context,
         });
         break;
-      case "self":
-        await runSelfCommand({ subcommand, args, context });
-        break;
       case "capability":
         await runCapabilityCommand({ subcommand, args, context });
         break;
@@ -379,9 +355,6 @@ const run = async (): Promise<void> => {
       case "docs":
         await runDocsCommand({ subcommand, args, context });
         break;
-      case "telemetry":
-        await runTelemetryCommand({ subcommand, args, context });
-        break;
       case "signal":
         await runSignalCommand({ subcommand, args, context });
         break;
@@ -396,15 +369,6 @@ const run = async (): Promise<void> => {
         break;
       case "trace":
         await runTraceCommand({ subcommand, args, context });
-        break;
-      case "refactor":
-        await runRefactorCommand({ subcommand, args, context });
-        break;
-      case "fixture":
-        await runFixtureCommand({ subcommand, args, context });
-        break;
-      case "scaffold":
-        await runScaffoldCommand({ subcommand, args, context });
         break;
       case "test":
         await runTestCommand({ subcommand, args, context });

@@ -3,14 +3,12 @@ import path from "node:path";
 import { spawn } from "node:child_process";
 import { promises as fs } from "node:fs";
 
-import { fileExists, stableStringify } from "../fs.js";
+import { stableStringify } from "../fs.js";
 import { getArtifactsDir } from "../runlog.js";
-import { buildCodexSignalReport } from "../signals/codex.js";
 import {
   buildBlackboardSignals,
   loadSignalCatalog,
   normalizeBlackboardObservations,
-  normalizeEvidence,
   renderCommandLog,
   sortBlackboardSignals,
 } from "./refresh.js";
@@ -41,13 +39,6 @@ export type BlackboardView = {
   }>;
   artifacts: {
     command_log_path: string | null;
-  };
-  telemetry: {
-    report_path: string | null;
-    latest_report_path: string | null;
-    report_hash: string;
-    telemetry_missing: boolean;
-    cycle_id: string | null;
   };
 };
 
@@ -121,16 +112,13 @@ const STABLE_TIMESTAMP_RANGE_MS = 1000 * 60 * 60 * 24 * 365 * 50;
 const buildDeterministicTimestamp = ({
   root,
   commands,
-  telemetryReportHash,
   cycleId,
 }: {
   root: string;
   commands: BlackboardCommandResult[];
-  telemetryReportHash: string;
   cycleId: string | null;
 }): Date => {
   const signature = {
-    telemetry_report_hash: telemetryReportHash,
     cycle_id: cycleId,
     commands: commands.map((command) => ({
       signal: command.signal,
@@ -192,22 +180,6 @@ export const buildBlackboardView = async ({
     throw error;
   }
 
-  const telemetryPresentSignal = "agent_total_tokens";
-  const telemetryMissingSignal = "telemetry_missing";
-  const catalogSignals = new Set(catalog.catalogSignals);
-  const telemetryCatalogMissing = [
-    telemetryPresentSignal,
-    telemetryMissingSignal,
-  ].filter((signal) => !catalogSignals.has(signal));
-  if (telemetryCatalogMissing.length) {
-    const error = new Error("Telemetry signals missing from catalog.");
-    (error as Error & { code?: number; details?: unknown }).code = 3;
-    (error as Error & { details?: unknown }).details = {
-      missing_signals: telemetryCatalogMissing,
-    };
-    throw error;
-  }
-
   const commandResults: BlackboardCommandResult[] = [];
   const commandSummaries: Array<{
     signal: string;
@@ -256,36 +228,12 @@ export const buildBlackboardView = async ({
     await fs.writeFile(resolvedArtifactPath, artifactContent, "utf8");
   }
 
-  const telemetryReport = await buildCodexSignalReport({
-    root,
-    store,
-    since: null,
-    gitCommit: null,
-    cycleId: cycleId ?? null,
-    writeReports: !readOnly,
-  });
-  const reportRelCandidate = toRelativePath(root, telemetryReport.reportPath);
-  const latestRelCandidate = toRelativePath(root, telemetryReport.latestPath);
-  const reportExists = readOnly
-    ? await fileExists(telemetryReport.reportPath)
-    : true;
-  const latestExists = readOnly
-    ? await fileExists(telemetryReport.latestPath)
-    : true;
-  const reportRel = reportExists ? reportRelCandidate : "";
-  const latestRel = latestExists ? latestRelCandidate : "";
-  const telemetryEvidence = normalizeEvidence([
-    reportRel ? `file:${reportRel}` : "",
-    "cmd:telemetry_report",
-  ]);
-  const telemetrySignals: BlackboardSignal[] = [];
   const effectiveNow =
     now ??
     (deterministic
       ? buildDeterministicTimestamp({
           root,
           commands: commandResults,
-          telemetryReportHash: telemetryReport.reportHash,
           cycleId: cycleId ?? null,
         })
       : logStamp);
@@ -295,26 +243,8 @@ export const buildBlackboardView = async ({
     artifactRel,
     now: effectiveNow,
   });
-  if (telemetryReport.telemetryMissing) {
-    telemetrySignals.push({
-      ts: effectiveNow.toISOString(),
-      kind: telemetryMissingSignal,
-      summary: `${telemetryMissingSignal}: no telemetry sessions`,
-      evidence: telemetryEvidence,
-    });
-  } else {
-    telemetrySignals.push({
-      ts: effectiveNow.toISOString(),
-      kind: telemetryPresentSignal,
-      summary: `${telemetryPresentSignal}: ${telemetryReport.report.totals.total_tokens}`,
-      evidence: telemetryEvidence,
-    });
-  }
 
-  const signals = sortBlackboardSignals([
-    ...commandSignals,
-    ...telemetrySignals,
-  ]);
+  const signals = sortBlackboardSignals(commandSignals);
 
   return {
     generated_at: effectiveNow.toISOString(),
@@ -322,13 +252,6 @@ export const buildBlackboardView = async ({
     commands: commandSummaries,
     artifacts: {
       command_log_path: commandLogPath,
-    },
-    telemetry: {
-      report_path: reportRel || null,
-      latest_report_path: latestRel || null,
-      report_hash: telemetryReport.reportHash,
-      telemetry_missing: telemetryReport.telemetryMissing,
-      cycle_id: cycleId ?? null,
     },
   };
 };

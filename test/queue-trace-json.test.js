@@ -47,7 +47,7 @@ test("q trace --json includes origin and suggested commands", async () => {
     repo_path: "/tmp/source-repo",
     commit: "abc1234",
     subpath: "packages/app",
-    created_by: "codex",
+    created_by: "agent",
   };
   const item = {
     id: "BL-0001",

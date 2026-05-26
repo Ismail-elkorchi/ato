@@ -119,12 +119,11 @@ export const runBlackboardCommand = async ({
     if (json) {
       writeJson({
         ok: true,
-        schema_version: "bb-show.v2",
+        schema_version: "bb-show.v3",
         generated_at: view.generated_at,
         signals: view.signals,
         posts,
         working_memory: workingMemory,
-        telemetry: view.telemetry,
         derived: {
           command_log_path: view.artifacts.command_log_path,
           inbox_path: toRelativePath(target.root, inboxPath),

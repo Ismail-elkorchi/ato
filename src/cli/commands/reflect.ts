@@ -327,7 +327,7 @@ const buildReflectItem = ({ entry, items, existingIds }) => {
     target: normalizedTarget ?? parseTargetInput("unbounded"),
     deps: normalizeDeps(dependencies),
     evidence,
-    owner: entry.owner ?? "codex",
+    owner: entry.owner ?? "agent",
     notes: entry.notes ? String(entry.notes) : "",
     spec,
     details,
