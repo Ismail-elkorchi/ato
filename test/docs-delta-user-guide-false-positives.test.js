@@ -43,7 +43,7 @@ test("docs delta surfaces USER_GUIDE false-positive command phrases", async () =
     [
       "# ATO User Guide",
       "ATO package root is documented.",
-      "ATO eval cycle is explained.",
+      "ATO cycle pack is explained.",
       "ATO q list includes filters.",
       "- `ato user guide`",
       "- `ato package root`",

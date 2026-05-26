@@ -22,8 +22,11 @@ type PlainObject = Record<string, unknown>;
 const HELP = [
   "Usage: ato plugin add --input <json|path>",
   "",
+  "Hooks:",
+  "  gate.pre, gate.post, queue.pre, queue.post, cycle.post",
+  "",
   "Example:",
-  "  ato plugin add --input '{\"name\":\"my-plugin\",\"version\":\"1.0.0\",\"entry\":\"plugins/my-plugin/index.js\",\"hooks\":[\"gate.pre\"]}'",
+  "  ato plugin add --input '{\"name\":\"my-plugin\",\"version\":\"1.0.0\",\"entry\":\"plugins/my-plugin/index.js\",\"hooks\":[\"cycle.post\"]}'",
 ].join("\n");
 
 const isPlainObject = (value: unknown): value is PlainObject =>

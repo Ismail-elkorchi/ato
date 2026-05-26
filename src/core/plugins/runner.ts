@@ -11,6 +11,8 @@ import type { TargetContext } from "../types.js";
 export type PluginHookContext = {
   hook: string;
   action: string;
+  cycleId?: string | null;
+  blockId?: string | null;
   queueId?: string | null;
   mode?: string | null;
   status?: { from?: string | null; to?: string | null };

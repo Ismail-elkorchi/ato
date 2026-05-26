@@ -380,61 +380,6 @@ export type SignalDefinition = {
 
 export type SignalDefinitionCatalog = SignalDefinition[];
 
-export type EvalOutcome = "ok" | "fail" | "inconclusive" | "unknown";
-export type EvalNegativeReportType = "regression" | "miss" | "cost" | "inconclusive";
-
-export type EvalNegativeReport = {
-  type: EvalNegativeReportType;
-  summary: string;
-  evidence: string[];
-};
-
-export type EvalSeedingResult =
-  | {
-      outcome: "seeded";
-      queue_ids: string[];
-      evidence: string[];
-      summary?: string;
-    }
-  | {
-      outcome: "no_seed";
-      summary: string;
-      evidence: string[];
-    };
-
-export type EvalSupersedes = {
-  id: string;
-  reason: string;
-  evidence: string[];
-};
-
-export type EvalSelectionOverride = {
-  expected_queue_id: string;
-  actual_queue_id: string;
-  reason: string;
-  evidence: string[];
-};
-
-export type EvalSelectionEvidence = CycleSelectionEvidence;
-
-export type EvalGateArtifactEvidence = {
-  path: string;
-  sha256: string;
-};
-
-export type EvalGateEvidence = {
-  mode: "full";
-  result?: { ok: boolean };
-  artifacts?: EvalGateArtifactEvidence[];
-  obligations_hash?: string;
-  run_ref?: { path: string; line: number };
-};
-
-export type EvalPreflightEvidence = {
-  path: string;
-  sha256: string;
-};
-
 export type CyclePackRef = {
   kind: "cycle_pack";
   cycle_id: string;
@@ -449,92 +394,6 @@ export type PackVerifyRef = {
   path: string;
   sha256: string;
   ok: boolean;
-};
-
-export type EvalCycleIntegrity = {
-  status: "ok" | "invalid" | "degraded";
-  issues?: string[];
-};
-
-export type EvalCheckRecord = {
-  id: string;
-  command: string;
-  kind?: string;
-  status?: "ok" | "fail" | "skipped" | "unknown";
-  exitCode?: number;
-  durationMs?: number;
-  artifacts?: string[];
-};
-
-export type EvalCycleRecord = {
-  id: string;
-  ts: string;
-  queue_id?: string;
-  cycle_index: number;
-  hypothesis: string;
-  acceptance_checks: string[];
-  evidence: string[];
-  outcome: EvalOutcome;
-  negative_report: EvalNegativeReport;
-  seeding_result: EvalSeedingResult;
-  supersedes?: EvalSupersedes;
-  override?: EvalSelectionOverride;
-  telemetry_snapshot_ref?: string;
-  telemetry_summary?: {
-    tokens_total: number;
-    tool_calls_total: number;
-    shell_commands_total: number;
-  };
-  telemetry_missing?: boolean;
-  selection_evidence: EvalSelectionEvidence;
-  gate_evidence: EvalGateEvidence;
-  preflight_evidence: EvalPreflightEvidence;
-  pack_ref?: CyclePackRef;
-  pack_verify_ref?: PackVerifyRef;
-  integrity?: EvalCycleIntegrity;
-  checks: EvalCheckRecord[];
-};
-
-export type EvalCheckCatalogEntry = {
-  id: string;
-  mode: "fast" | "full";
-  scope?: string;
-  cmd: string[];
-};
-
-export type EvalConfig = {
-  version: number;
-  target_id?: string;
-  checks?: EvalCheckCatalogEntry[];
-};
-
-export type EvalScorecard = {
-  version: number;
-  cycles: number;
-  outcomes: {
-    ok: number;
-    fail: number;
-    inconclusive: number;
-    unknown: number;
-  };
-  checks: {
-    total: number;
-    ok: number;
-    fail: number;
-    skipped: number;
-    unknown: number;
-  };
-  telemetry?: {
-    cycles_total: number;
-    cycles_with_summary: number;
-    cycles_with_snapshot_ref: number;
-    cycles_missing: number;
-    cycles_unknown: number;
-    tokens_total: number;
-    tool_calls_total: number;
-    shell_commands_total: number;
-  };
-  last_cycle_id: string | null;
 };
 
 export type RunLogEntry = {
@@ -557,8 +416,7 @@ export type RunLogEntry = {
     | "self_update"
     | "self_rollback"
     | "dev_run"
-    | "cycle_record"
-    | "eval_cycle_record";
+    | "cycle_record";
   target_id: string;
   queue_id?: string;
   queue_ids?: string[];

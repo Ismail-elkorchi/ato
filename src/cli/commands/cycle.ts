@@ -3376,6 +3376,33 @@ export const runCycleCommand = async ({
     }
     await writeState(target.storePath, nextState as typeof state);
 
+    await runPluginHooks({
+      target,
+      hook: "cycle.post",
+      enabled: context.pluginsEnabled,
+      payload: {
+        hook: "cycle.post",
+        action: "finish",
+        cycleId: activeCycleId,
+        blockId: blockId ?? null,
+        queueId,
+        target: { id: target.id, root: target.root },
+        metadata: {
+          cycle_record_ref: {
+            path: cycleRecordRel,
+          },
+          cycle_ledger_ref: {
+            path: toRelativePath(
+              target.root,
+              path.join(target.storePath, "cycles", "ledger.jsonl"),
+            ),
+          },
+          pack_ref: packRef,
+          pack_verify_ref: packVerifyRef,
+        },
+      },
+    });
+
     const payload = {
       ok: true,
       schema_version: CYCLE_FINISH_SCHEMA,

@@ -33,7 +33,7 @@ node dist/cli/main.js --help
 - Agent-neutral: useful from Codex, Claude Code, OpenCode, custom agents, and human shells.
 - Deterministic: commands should prefer stable ordering and repeatable output.
 - Small kernel: product capabilities should earn their place.
-- Public by default: repository docs should describe the product, not private research history.
+- Product-facing by default: repository docs should describe ATO behavior.
 
 ## License
 

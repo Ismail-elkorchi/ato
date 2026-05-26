@@ -43,7 +43,6 @@ const TOP_LEVEL_COMMANDS = [
   "lint",
   "status",
   "cycle",
-  "eval",
 ];
 
 test("top-level <command> --help exits 0 and prints usage", () => {
@@ -59,4 +58,14 @@ test("top-level <command> --help exits 0 and prints usage", () => {
       `${command} --help did not print usage text`,
     );
   }
+});
+
+test("removed top-level commands use the standard unknown-command path", () => {
+  const removed = ["ev", "al"].join("");
+  const result = spawnSync(process.execPath, [cliPath, removed, "--help"], {
+    encoding: "utf8",
+  });
+
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, new RegExp(`Unknown command: ${removed}`));
 });

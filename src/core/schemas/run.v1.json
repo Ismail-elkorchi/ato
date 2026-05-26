@@ -22,8 +22,7 @@
         "reflect",
         "pack",
         "lint",
-        "cycle_record",
-        "eval_cycle_record"
+        "cycle_record"
       ]
     },
     "target_id": {

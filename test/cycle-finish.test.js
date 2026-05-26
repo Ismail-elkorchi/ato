@@ -248,6 +248,28 @@ const commitAll = (root) => {
   assert.equal(commit.status, 0, commit.stderr);
 };
 
+const writeCyclePostPlugin = async (root) => {
+  const pluginDir = path.join(root, "plugins", "cycle-observer");
+  await fs.mkdir(pluginDir, { recursive: true });
+  await fs.writeFile(
+    path.join(pluginDir, "index.js"),
+    [
+      'const fs = require("node:fs");',
+      'const path = require("node:path");',
+      'let input = "";',
+      'process.stdin.setEncoding("utf8");',
+      'process.stdin.on("data", (chunk) => { input += chunk; });',
+      'process.stdin.on("end", () => {',
+      "  const payload = JSON.parse(input);",
+      '  const out = path.join(process.env.ATO_REPO_ROOT, ".ato", "plugin-events.jsonl");',
+      "  fs.appendFileSync(out, `${JSON.stringify({ hook: process.env.ATO_PLUGIN_HOOK, payload })}\\n`);",
+      "});",
+      "",
+    ].join("\n"),
+    "utf8",
+  );
+};
+
 test("cycle finish refuses without active cycle", async () => {
   const root = await makeTempDir("ato-cycle-finish-");
   await writeAgents(root);
@@ -317,6 +339,76 @@ test("cycle finish writes relative evidence paths", async () => {
   const artifacts = last.gate_evidence?.artifacts ?? [];
   assert.ok(artifacts.every((artifact) => !String(artifact.path).startsWith("/")));
   assert.ok(String(last.preflight_evidence.path || "").startsWith(".ato/"));
+});
+
+test("cycle finish emits product record refs to cycle post plugins", async () => {
+  const root = await makeTempDir("ato-cycle-finish-plugin-");
+  initGit(root);
+  await writeAgents(root);
+  await writeConfig(root);
+  await writeContracts(root);
+  await writeCyclePostPlugin(root);
+  const cliPath = path.resolve("dist/cli/main.js");
+  const addPlugin = spawnSync(
+    process.execPath,
+    [
+      cliPath,
+      "plugin",
+      "add",
+      "--input",
+      JSON.stringify({
+        name: "cycle-observer",
+        version: "1.0.0",
+        entry: "plugins/cycle-observer/index.js",
+        hooks: ["cycle.post"],
+      }),
+      "--json",
+    ],
+    { cwd: root, encoding: "utf8" },
+  );
+  assert.equal(addPlugin.status, 0, addPlugin.stderr);
+
+  const baselineTag = "baseline-plugin";
+  await writeBaseline(root, { tag: baselineTag });
+  await writeBlock(root, { baselineTag });
+  await writeQueue(root);
+  commitAll(root);
+  tagBaseline(root, baselineTag);
+
+  const env = { ...process.env, ATO_TEST_SHARD: "" };
+  const start = spawnSync(
+    process.execPath,
+    [cliPath, "cycle", "start", "--json"],
+    { cwd: root, encoding: "utf8", env },
+  );
+  assert.equal(start.status, 0, start.stderr);
+
+  const finish = spawnSync(
+    process.execPath,
+    [
+      cliPath,
+      "cycle",
+      "finish",
+      "--json",
+      "--run-acceptance",
+      "--run-gate",
+      "--run-pack-verify",
+    ],
+    { cwd: root, encoding: "utf8", env },
+  );
+  assert.equal(finish.status, 0, finish.stderr);
+
+  const eventRaw = await fs.readFile(path.join(root, ".ato", "plugin-events.jsonl"), "utf8");
+  const event = JSON.parse(eventRaw.trim());
+  assert.equal(event.hook, "cycle.post");
+  assert.equal(event.payload.hook, "cycle.post");
+  assert.equal(event.payload.action, "finish");
+  assert.equal(event.payload.cycleId, "CY-0001");
+  assert.equal(event.payload.queueId, "BL-0001");
+  assert.equal(event.payload.metadata.cycle_record_ref.path, ".ato/cycles/CY-0001/cycle-record.json");
+  assert.equal(event.payload.metadata.cycle_ledger_ref.path, ".ato/cycles/ledger.jsonl");
+  assert.equal(event.payload.metadata.pack_ref.kind, "cycle_pack");
+  assert.equal(event.payload.metadata.pack_verify_ref.kind, "pack_verify");
 });
 
 test("cycle finish succeeds after closing the active block", async () => {
@@ -482,10 +574,7 @@ test("cycle finish failure leaves queue item unchanged", async () => {
   const payload = JSON.parse(finish.stdout.trim());
   assert.equal(payload.ok, false);
   const errorMessage = payload.error?.message ?? "";
-  assert.ok(
-    /invalid eval cycle/i.test(errorMessage) ||
-      /requires explicit --run-acceptance/i.test(errorMessage),
-  );
+  assert.match(errorMessage, /requires explicit --run-acceptance/i);
 
   const afterRaw = await fs.readFile(queuePath, "utf8");
   const afterHash = crypto.createHash("sha256").update(afterRaw).digest("hex");

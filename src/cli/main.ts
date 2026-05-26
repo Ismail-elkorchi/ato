@@ -19,7 +19,6 @@ import { runInitCommand } from "./commands/init.js";
 import { runDiagnoseCommand } from "./commands/diagnose.js";
 import { runSelfCommand } from "./commands/self.js";
 import { runCapabilityCommand } from "./commands/capability.js";
-import { runEvalCommand } from "./commands/eval.js";
 import { runPluginCommand } from "./commands/plugin.js";
 import { runBaselineCommand } from "./commands/baseline.js";
 import { runBlockCommand } from "./commands/block.js";
@@ -84,7 +83,6 @@ const HELP = [
   "  lint terms|protocol",
   "  status",
   "  cycle start|finish|abort",
-  "  eval scorecard|cycle|pack",
   "",
   "Global options:",
   "  --repo <id|path>     Repo id or root path",
@@ -134,7 +132,6 @@ const TOP_LEVEL_COMMAND_HELP: Record<string, string[]> = {
   lint: ["Usage: ato lint terms|protocol [options]"],
   status: ["Usage: ato status [options]"],
   cycle: ["Usage: ato cycle start|finish|abort [options]"],
-  eval: ["Usage: ato eval scorecard|cycle|pack [options]"],
 };
 
 const parseGlobal = (argv: string[]) => {
@@ -346,9 +343,6 @@ const run = async (): Promise<void> => {
         break;
       case "cycle":
         await runCycleCommand({ subcommand, args, context });
-        break;
-      case "eval":
-        await runEvalCommand({ subcommand, args, context });
         break;
       case "lesson":
         await runLessonCommand({ subcommand, args, context });
