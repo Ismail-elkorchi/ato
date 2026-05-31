@@ -300,11 +300,14 @@ export const runStatusCommand = async ({
         (record) => record.block_id === activeBlockId,
       ).length;
       if (cyclesRecorded >= cyclesPlanned) {
-        const baselineTag = resolveBaselineTag(blockConfig) ?? "baseline_block0004_v0";
-        const recommendedCommands = [
-          `ato block close --block-id ${activeBlockId} --json`,
-          `ato block open --block-id ${nextBlockId} --baseline ${baselineTag} --json`,
-        ];
+        const baselineTag = resolveBaselineTag(blockConfig);
+        const closeCommand = `ato block close --block-id ${activeBlockId} --json`;
+        const recommendedCommands = [closeCommand];
+        if (baselineTag) {
+          recommendedCommands.push(
+            `ato block open --block-id ${nextBlockId} --baseline ${baselineTag} --json`,
+          );
+        }
         blockExhaustion = {
           block_id: activeBlockId,
           cycles_planned: cyclesPlanned,
@@ -312,7 +315,7 @@ export const runStatusCommand = async ({
           next_block_id: nextBlockId,
           recommended_commands: recommendedCommands,
         };
-        blockExhaustionAction = `${recommendedCommands[0]} && ${recommendedCommands[1]}`;
+        blockExhaustionAction = recommendedCommands.join(" && ");
       }
     }
   }
@@ -357,6 +360,9 @@ export const runStatusCommand = async ({
     agentInstructions = [
       `Block ${blockExhaustion.block_id} is exhausted (${blockExhaustion.cycles_recorded}/${blockExhaustion.cycles_planned}).`,
       ...blockExhaustion.recommended_commands.map((command) => `Run: ${command}`),
+      ...(blockExhaustion.recommended_commands.length === 1
+        ? [`Choose a baseline before opening ${blockExhaustion.next_block_id}.`]
+        : []),
     ];
   } else if (selectionFailure) {
     agentInstructions = [nextAction];

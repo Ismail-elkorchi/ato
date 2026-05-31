@@ -144,14 +144,12 @@ test("q intake writes a validated queued item with audit notes", async () => {
       "--dest",
       root,
       "--allow-cross-store-write",
-      "--telemetry-ref",
-      "telemetry.json#L1",
       "--json",
     ],
     { cwd: sourceRoot, encoding: "utf8" },
   );
 
-  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.status, 0, `${result.stderr}\n${result.stdout}`);
   const payload = JSON.parse(result.stdout.trim());
   assert.equal(payload.ok, true);
   assert.equal(payload.id, "BL-0002");
@@ -178,6 +176,5 @@ test("q intake writes a validated queued item with audit notes", async () => {
   assert.equal(intakeItem.notes.startsWith("seed note\nIntake:"), true);
   assert.ok(intakeItem.notes.includes(`source_repo=${sourceRoot}`));
   assert.ok(intakeItem.notes.includes("ingested_at="));
-  assert.ok(intakeItem.notes.includes("telemetry_ref=telemetry.json#L1"));
   assert.equal(intakeItem.created_at, intakeItem.updated_at);
 });

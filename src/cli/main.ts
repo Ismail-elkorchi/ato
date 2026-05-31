@@ -86,7 +86,7 @@ const TOP_LEVEL_COMMAND_HELP: Record<string, string[]> = {
   init: ["Usage: ato init [options]"],
   repo: ["Usage: ato repo resolve|list|init-seed [options]"],
   q: ["Usage: ato q <subcommand> [options]"],
-  gate: ["Usage: ato gate run|retry|explain [options]"],
+  gate: ["Usage: ato gate run|explain [options]"],
   reflect: ["Usage: ato reflect record|run [options]"],
   plugin: ["Usage: ato plugin add [options]"],
   lesson: ["Usage: ato lesson add [options]"],

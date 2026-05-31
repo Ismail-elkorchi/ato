@@ -197,13 +197,13 @@ const runCli = (root, args) => {
   return spawnSync(process.execPath, [cliPath, ...args], {
     cwd: root,
     encoding: "utf8",
-    env: { ...process.env, ATO_TEST_SHARD: "" },
+    env: { ...process.env },
   });
 };
 
 test("cycle finish reruns acceptance when command changes for the same ordinal", async () => {
   const root = await makeTempDir("ato-acceptance-rerun-");
-  const baselineTag = "baseline_block0004_v0";
+  const baselineTag = "baseline-main";
   const oldCheck = "cmd:node -e \"process.stdout.write('old-marker')\"";
   const newCheck = "cmd:node -e \"process.stdout.write('fresh-marker')\"";
 

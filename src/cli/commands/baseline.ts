@@ -8,7 +8,7 @@ const HELP = [
   "  ato baseline verify --tag <baseline-tag>",
   "",
   "Examples:",
-  "  ato baseline verify --tag baseline_block0004_v0 --json",
+  "  ato baseline verify --tag baseline-main --json",
 ].join("\n");
 
 const BASELINE_VERIFY_SCHEMA = "baseline-verify.v1";

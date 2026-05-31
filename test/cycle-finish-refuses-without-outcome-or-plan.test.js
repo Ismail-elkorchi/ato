@@ -121,7 +121,7 @@ test("cycle finish does not require outcome or plan", async () => {
   commitAll(root);
 
   const cliPath = path.resolve("dist/cli/main.js");
-  const env = { ...process.env, ATO_TEST_SHARD: "" };
+  const env = { ...process.env };
   const start = spawnSync(
     process.execPath,
     [cliPath, "cycle", "start", "--json"],

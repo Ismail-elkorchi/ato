@@ -302,7 +302,7 @@ test("cycle finish writes relative evidence paths", async () => {
   tagBaseline(root, baselineTag);
 
   const cliPath = path.resolve("dist/cli/main.js");
-  const env = { ...process.env, ATO_TEST_SHARD: "" };
+  const env = { ...process.env };
   const start = spawnSync(
     process.execPath,
     [cliPath, "cycle", "start", "--json"],
@@ -375,7 +375,7 @@ test("cycle finish emits product record refs to cycle post plugins", async () =>
   commitAll(root);
   tagBaseline(root, baselineTag);
 
-  const env = { ...process.env, ATO_TEST_SHARD: "" };
+  const env = { ...process.env };
   const start = spawnSync(
     process.execPath,
     [cliPath, "cycle", "start", "--json"],
@@ -425,7 +425,7 @@ test("cycle finish succeeds after closing the active block", async () => {
   tagBaseline(root, baselineTag);
 
   const cliPath = path.resolve("dist/cli/main.js");
-  const env = { ...process.env, ATO_TEST_SHARD: "" };
+  const env = { ...process.env };
   const start = spawnSync(
     process.execPath,
     [cliPath, "cycle", "start", "--json"],
@@ -553,7 +553,7 @@ test("cycle finish failure leaves queue item unchanged", async () => {
   tagBaseline(root, baselineTag);
 
   const cliPath = path.resolve("dist/cli/main.js");
-  const env = { ...process.env, ATO_TEST_SHARD: "" };
+  const env = { ...process.env };
   const start = spawnSync(
     process.execPath,
     [cliPath, "cycle", "start", "--json"],

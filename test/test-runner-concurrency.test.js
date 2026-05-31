@@ -66,24 +66,17 @@ const setupFixture = async () => {
   return { root, fixturePath, runnerPath, pkgVersion: pkg.version };
 };
 
-const resolveProofPath = (root, proofPath) => {
-  const segments = proofPath.split("/");
-  return path.join(root, ...segments);
-};
-
-const loadProofHelpers = async (runnerPath) => {
+const loadRunnerHelpers = async (runnerPath) => {
   const moduleUrl = pathToFileURL(runnerPath).href;
   const module = await import(moduleUrl);
   return {
     computeArgvFingerprint: module.computeArgvFingerprint,
-    computeProofSecretHash: module.computeProofSecretHash,
   };
 };
 
 const runRunner = async (envOverrides = {}) => {
   const fixture = await setupFixture();
   const env = { ...process.env, ...envOverrides };
-  delete env.ATO_TEST_SHARD;
   if (!("ATO_TEST_CONCURRENCY" in envOverrides)) {
     delete env.ATO_TEST_CONCURRENCY;
   }
@@ -110,8 +103,7 @@ test("test runner honors ATO_TEST_CONCURRENCY override", async () => {
     await runRunner({
       ATO_TEST_CONCURRENCY: "2",
     });
-  const { computeArgvFingerprint, computeProofSecretHash } =
-    await loadProofHelpers(runnerPath);
+  const { computeArgvFingerprint } = await loadRunnerHelpers(runnerPath);
   const runnerSha = await hashFile(runnerPath);
   const invocationId = computeInvocationId({
     runnerSha,
@@ -125,30 +117,16 @@ test("test runner honors ATO_TEST_CONCURRENCY override", async () => {
     assert.equal(header.runner_sha256, runnerSha);
     assert.equal(header.invocation_id, invocationId);
     const argvFingerprint = computeArgvFingerprint([relFixture]);
-    const proofSecretHash = computeProofSecretHash({
-      argvFingerprint,
-      runnerSha256: runnerSha,
-      invocationId,
-    });
-    assert.equal(header.proof_secret_hash, proofSecretHash);
+    assert.equal(header.argv_fingerprint, argvFingerprint);
     assert.equal(header.concurrency, 2);
     assert.equal(header.source, "env");
     assert.ok(Number.isInteger(header.detected_parallelism));
     assert.ok(header.detected_parallelism >= 1);
-    assert.ok(header.proof_path);
-    assert.equal(path.isAbsolute(header.proof_path), false);
-    assert.ok(!header.proof_path.includes("\\"));
-
-    const proofPath = resolveProofPath(root, header.proof_path);
-    const proof = JSON.parse(await fs.readFile(proofPath, "utf8"));
-    assert.equal(proof.proof_kind, "runner_exec.v1");
-    assert.equal(proof.runner_id, "ato-parallel-runner");
-    assert.equal(proof.runner_sha256, runnerSha);
-    assert.equal(proof.invocation_id, invocationId);
-    assert.equal(proof.proof_secret_hash, proofSecretHash);
-    assert.equal(proof.env_source, "env");
-    assert.equal(proof.concurrency_value, 2);
-    assert.equal(proof.argv_fingerprint, argvFingerprint);
+    assert.equal(header.test_count, 1);
+    assert.deepEqual(
+      Object.keys(header).filter((key) => /proof|receipt/i.test(key)),
+      [],
+    );
   } finally {
     await fs.rm(root, { recursive: true, force: true });
   }
@@ -157,8 +135,7 @@ test("test runner honors ATO_TEST_CONCURRENCY override", async () => {
 test("test runner auto uses detected parallelism with parseable header", async () => {
   const { header, relFixture, runnerPath, root, pkgVersion } =
     await runRunner();
-  const { computeArgvFingerprint, computeProofSecretHash } =
-    await loadProofHelpers(runnerPath);
+  const { computeArgvFingerprint } = await loadRunnerHelpers(runnerPath);
   const runnerSha = await hashFile(runnerPath);
   const invocationId = computeInvocationId({
     runnerSha,
@@ -172,27 +149,16 @@ test("test runner auto uses detected parallelism with parseable header", async (
     assert.equal(header.runner_sha256, runnerSha);
     assert.equal(header.invocation_id, invocationId);
     const argvFingerprint = computeArgvFingerprint([relFixture]);
-    const proofSecretHash = computeProofSecretHash({
-      argvFingerprint,
-      runnerSha256: runnerSha,
-      invocationId,
-    });
-    assert.equal(header.proof_secret_hash, proofSecretHash);
+    assert.equal(header.argv_fingerprint, argvFingerprint);
     assert.equal(header.source, "auto");
     assert.ok(Number.isInteger(header.detected_parallelism));
     assert.ok(header.detected_parallelism >= 1);
     assert.equal(header.concurrency, header.detected_parallelism);
-    assert.ok(header.proof_path);
-
-    const proofPath = resolveProofPath(root, header.proof_path);
-    const proof = JSON.parse(await fs.readFile(proofPath, "utf8"));
-    assert.equal(proof.proof_kind, "runner_exec.v1");
-    assert.equal(proof.runner_sha256, runnerSha);
-    assert.equal(proof.invocation_id, invocationId);
-    assert.equal(proof.proof_secret_hash, proofSecretHash);
-    assert.equal(proof.env_source, "auto");
-    assert.equal(proof.concurrency_value, header.detected_parallelism);
-    assert.equal(proof.argv_fingerprint, argvFingerprint);
+    assert.equal(header.test_count, 1);
+    assert.deepEqual(
+      Object.keys(header).filter((key) => /proof|receipt/i.test(key)),
+      [],
+    );
   } finally {
     await fs.rm(root, { recursive: true, force: true });
   }
@@ -202,8 +168,4 @@ test("gate test step uses npm test runner", async () => {
   const pkg = JSON.parse(await fs.readFile("package.json", "utf8"));
   const script = pkg.scripts?.test ?? "";
   assert.match(script, /scripts\/parallel-runner\.mjs/);
-
-  const config = JSON.parse(await fs.readFile(".ato/config.json", "utf8"));
-  const cmd = config.gates?.full?.tests?.root?.[0]?.cmd ?? [];
-  assert.deepEqual(cmd, ["npm", "run", "test"]);
 });

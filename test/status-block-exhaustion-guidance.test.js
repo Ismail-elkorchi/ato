@@ -62,7 +62,15 @@ const writeBlock = async (root) => {
     version: 1,
     blockId: "block-0011",
     cyclesPlanned: 1,
-    baseline: { tag: "baseline_block0004_v0" },
+    baseline: { tag: "baseline-main" },
+  });
+};
+
+const writeBlockWithoutBaseline = async (root) => {
+  await writeJson(path.join(root, ".ato", "meta", "blocks", "block-0011.json"), {
+    version: 1,
+    blockId: "block-0011",
+    cyclesPlanned: 1,
   });
 };
 
@@ -175,16 +183,49 @@ test("status reports block exhaustion transition when block-0011 is fully record
     next_block_id: "block-0012",
     recommended_commands: [
       "ato block close --block-id block-0011 --json",
-      "ato block open --block-id block-0012 --baseline baseline_block0004_v0 --json",
+      "ato block open --block-id block-0012 --baseline baseline-main --json",
     ],
   });
   assert.equal(
     payload.next_action,
-    "ato block close --block-id block-0011 --json && ato block open --block-id block-0012 --baseline baseline_block0004_v0 --json",
+    "ato block close --block-id block-0011 --json && ato block open --block-id block-0012 --baseline baseline-main --json",
   );
   assert.ok(
     payload.agent_instructions.some((line) =>
       line.includes("Block block-0011 is exhausted (1/1)."),
+    ),
+  );
+});
+
+test("status does not emit placeholder commands when exhausted block has no baseline", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "ato-status-block-no-baseline-"));
+  initGit(root);
+  await writeAgents(root);
+  await writeConfig(root);
+  await writeBlockWithoutBaseline(root);
+  await writeQueue(root);
+  await writeCycleLedger(root);
+  commitAll(root);
+
+  const cliPath = path.resolve("dist/cli/main.js");
+  const result = spawnSync(process.execPath, [cliPath, "status", "--json"], {
+    cwd: root,
+    encoding: "utf8",
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  const payload = JSON.parse(result.stdout.trim());
+  assert.deepEqual(payload.block_exhaustion.recommended_commands, [
+    "ato block close --block-id block-0011 --json",
+  ]);
+  assert.equal(
+    payload.next_action,
+    "ato block close --block-id block-0011 --json",
+  );
+  assert.equal(JSON.stringify(payload).includes("<baseline-tag>"), false);
+  assert.ok(
+    payload.agent_instructions.some((line) =>
+      line.includes("Choose a baseline before opening block-0012."),
     ),
   );
 });

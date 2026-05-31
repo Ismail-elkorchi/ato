@@ -71,7 +71,6 @@ const assertNoUnexpectedWrites = (before, after) => {
 const isAllowedAtoPath = (relPath) => {
   if (!relPath.startsWith(".ato/")) return false;
   if (relPath.startsWith(".ato/cycles/")) return true;
-  if (relPath.startsWith(".ato/runs/runner-proof/")) return true;
   return false;
 };
 

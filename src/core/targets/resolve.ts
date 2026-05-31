@@ -181,7 +181,16 @@ export const resolveTarget = async ({
   if (explicit) {
     const resolvedPath = await resolvePathInput(selection ?? "", cwd);
     if (resolvedPath) {
-      rootDir = resolvedPath;
+      if (explicitStore) {
+        rootDir = resolvedPath;
+      } else {
+        const selected = await findNearestStoreBootstrap(resolvedPath);
+        if (!selected) {
+          throw buildNotInitializedError(selection, storeSelection);
+        }
+        rootDir = selected.rootDir ?? resolvedPath;
+        storePath = selected.storePath;
+      }
     } else {
       if (!storePath) {
         throw buildNotInitializedError(selection, storeSelection);

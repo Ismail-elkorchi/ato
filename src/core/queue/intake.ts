@@ -93,14 +93,12 @@ export const buildIntakeItem = ({
   id,
   sourceRepo,
   ingestedAt,
-  telemetryRef,
   originFallback,
 }: {
   candidate: unknown;
   id: string;
   sourceRepo: string;
   ingestedAt: string;
-  telemetryRef?: string | null;
   originFallback?: QueueOrigin | null;
 }): QueueItem => {
   const source = asRecord(candidate) ?? {};
@@ -134,9 +132,6 @@ export const buildIntakeItem = ({
   const tags = normalizeTags(asStringArray(source["tags"]));
 
   const auditParts = [`source_repo=${sourceRepo}`, `ingested_at=${ingestedAt}`];
-  if (telemetryRef) {
-    auditParts.push(`telemetry_ref=${telemetryRef}`);
-  }
   const auditLine = `Intake: ${auditParts.join("; ")}`;
   const baseNotes = asString(source["notes"]);
   const notes = baseNotes ? `${baseNotes}\n${auditLine}` : auditLine;

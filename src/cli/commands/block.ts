@@ -37,7 +37,7 @@ const HELP = [
   "  ato block seal verify --block-id block-0005 --json",
   "  ato block report --block-id block-0005 --json",
   "  ato block close --block-id block-0005 --json",
-  "  ato block open --block-id block-0006 --baseline baseline_block0004_v0 --json",
+  "  ato block open --block-id block-0006 --baseline baseline-main --json",
 ].join("\n");
 
 const BLOCK_SEAL_SCHEMA = "block-seal-verify.v1";

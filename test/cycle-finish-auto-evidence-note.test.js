@@ -222,7 +222,7 @@ const readQueueItem = async (root) => {
 
 const runCycleStartFinish = (root) => {
   const cliPath = path.resolve("dist/cli/main.js");
-  const env = { ...process.env, ATO_TEST_SHARD: "" };
+  const env = { ...process.env };
   const start = spawnSync(
     process.execPath,
     [cliPath, "cycle", "start", "--json"],
@@ -248,7 +248,7 @@ const runCycleStartFinish = (root) => {
 
 const runCycleStart = (root) => {
   const cliPath = path.resolve("dist/cli/main.js");
-  const env = { ...process.env, ATO_TEST_SHARD: "" };
+  const env = { ...process.env };
   return spawnSync(
     process.execPath,
     [cliPath, "cycle", "start", "--json"],

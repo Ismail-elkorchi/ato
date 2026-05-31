@@ -222,7 +222,7 @@ test("cycle finish records pack_ref in ledger", async () => {
   tagBaseline(root, baselineTag);
 
   const cliPath = path.resolve("dist/cli/main.js");
-  const env = { ...process.env, ATO_TEST_SHARD: "" };
+  const env = { ...process.env };
   const start = spawnSync(
     process.execPath,
     [cliPath, "cycle", "start", "--json"],

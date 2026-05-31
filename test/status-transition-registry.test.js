@@ -91,12 +91,12 @@ test("block exhaustion transition supersedes generic selection failure", () => {
       selection_failure_block_label: "block-0011",
       next_block_id: "block-0012",
       block_exhaustion_action:
-        "ato block close --block-id block-0011 --json && ato block open --block-id block-0012 --baseline baseline_block0004_v0 --json",
+        "ato block close --block-id block-0011 --json && ato block open --block-id block-0012 --baseline baseline-main --json",
     }),
   );
   assert.equal(
     decision.next_action,
-    "ato block close --block-id block-0011 --json && ato block open --block-id block-0012 --baseline baseline_block0004_v0 --json",
+    "ato block close --block-id block-0011 --json && ato block open --block-id block-0012 --baseline baseline-main --json",
   );
   assert.equal(decision.next_action_state, "block_exhaustion");
   assert.equal(decision.next_action_reason, "block_cycles_planned_reached");

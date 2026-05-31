@@ -53,7 +53,6 @@ const CLOSEOUT_HELP: { root: string[]; plan: string[]; apply: string[] } = {
     "  --gate-run <path>      Optional gate --json output",
     "  --dest <path|id>       Destination store for cross-store apply (optional)",
     "  --allow-cross-store-write  Allow cross-store writes to --dest",
-    "  --telemetry-ref <ref>  Optional telemetry snapshot ref",
     "  --force                Include ineligible items as blocked",
     "",
     "Examples:",
@@ -66,7 +65,6 @@ const CLOSEOUT_HELP: { root: string[]; plan: string[]; apply: string[] } = {
     "Options:",
     "  --gate-run <path>      Optional gate --json output",
     "  --dest <path|id>       Destination store (optional; no writes)",
-    "  --telemetry-ref <ref>  Optional telemetry snapshot ref",
     "",
     "Example:",
     "  ato session closeout plan --gate-run .ato/runs/last-gate.json --json",
@@ -78,7 +76,6 @@ const CLOSEOUT_HELP: { root: string[]; plan: string[]; apply: string[] } = {
     "  --gate-run <path>      Optional gate --json output",
     "  --dest <path|id>       Destination store for cross-store apply (optional)",
     "  --allow-cross-store-write  Allow cross-store writes to --dest",
-    "  --telemetry-ref <ref>  Optional telemetry snapshot ref",
     "  --force                Include ineligible items as blocked",
     "",
     "Example:",
@@ -512,13 +509,21 @@ export const runSessionCommand = async ({
   if (action === "plan" && flags["apply"]) {
     throw new Error("Use either 'plan' or --apply, not both.");
   }
+  const allowedFlags = new Set([
+    "allow-cross-store-write",
+    "allowCrossStoreWrite",
+    "apply",
+    "dest",
+    "force",
+    "gate-run",
+    "help",
+    "json",
+  ]);
+  const unknownFlag = Object.keys(flags).find((key) => !allowedFlags.has(key));
+  if (unknownFlag) {
+    throw new Error(`Unknown option: --${unknownFlag}`);
+  }
   const apply = action === "apply" || Boolean(flags["apply"]);
-  const telemetryRef =
-    typeof flags["telemetry-ref"] === "string"
-      ? flags["telemetry-ref"].trim()
-      : typeof flags["telemetryRef"] === "string"
-        ? flags["telemetryRef"].trim()
-        : null;
   const destFlag = flags["dest"];
   if (destFlag === true) {
     throw new Error("Missing value for --dest.");
@@ -671,7 +676,6 @@ export const runSessionCommand = async ({
         mapping: {},
         audit: [],
         evidence_added: [],
-        telemetry_snapshot_ref: telemetryRef,
         gate_run_ref: plan.gate.path ?? null,
         force,
         receipt: null,
@@ -736,7 +740,6 @@ export const runSessionCommand = async ({
         id: nextId,
         sourceRepo: sourceTarget.root,
         ingestedAt: transferTimestamp,
-        telemetryRef,
         originFallback: origin,
       });
       const auditParts = [
@@ -900,7 +903,6 @@ export const runSessionCommand = async ({
         mapping: mappingBlocked,
         audit: auditEntries,
         evidence_added: [],
-        telemetry_snapshot_ref: telemetryRef,
         gate_run_ref: plan.gate.path ?? null,
         force,
         blocked_ids: blockedIds,
@@ -1009,7 +1011,6 @@ export const runSessionCommand = async ({
       mapping,
       audit: auditEntries,
       evidence_added: evidenceAdded,
-      telemetry_snapshot_ref: telemetryRef,
       gate_run_ref: plan.gate.path ?? null,
       force,
       receipt: {

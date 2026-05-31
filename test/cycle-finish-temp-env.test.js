@@ -253,10 +253,6 @@ const sanitizeEnv = () => {
   delete next["TMPDIR"];
   delete next["ATO_TEST_TMPDIR"];
   delete next["ATO_TEST_TMPDIR_SOURCE"];
-  delete next["ATO_RUNNER_BARRIER_DIR"];
-  delete next["ATO_RUNNER_BARRIER_ENABLE"];
-  delete next["ATO_RUNNER_BARRIER_TIMEOUT_MS"];
-  delete next["ATO_RUNNER_BARRIER_POLL_MS"];
   return next;
 };
 
@@ -289,7 +285,7 @@ const runCycleFinish = async ({ envOverrides } = {}) => {
   tagBaseline(root, baselineTag);
 
   const cliPath = path.resolve("dist/cli/main.js");
-  const env = { ...sanitizeEnv(), ATO_TEST_SHARD: "", ...(envOverrides ?? {}) };
+  const env = { ...sanitizeEnv(), ...(envOverrides ?? {}) };
 
   const start = spawnSync(
     process.execPath,
@@ -329,12 +325,10 @@ const runCycleFinish = async ({ envOverrides } = {}) => {
   const artifact = await fs.readFile(artifactPath, "utf8");
   const header = parseRunnerHeader(artifact);
 
-  const proofPath = path.join(root, ...String(header.proof_path).split("/"));
-  const proof = JSON.parse(await fs.readFile(proofPath, "utf8"));
-  return { header, proof };
+  return { header };
 };
 
-const assertTempBinding = ({ header, proof }) => {
+const assertTempBinding = ({ header }) => {
   assert.ok(header.temp_run_dir_sha256);
   assert.ok(header.temp_root_hash);
   if (header.temp_root) {
@@ -345,8 +339,6 @@ const assertTempBinding = ({ header, proof }) => {
     assert.ok(!path.isAbsolute(header.temp_run_dir));
     assert.ok(header.temp_run_dir.startsWith(".ato/"));
   }
-  assert.equal(proof.temp_source, header.temp_source);
-  assert.equal(proof.temp_run_dir_sha256, header.temp_run_dir_sha256);
 };
 
 const recordTempSourceEvidence = async ({ caseId, header }) => {
@@ -392,18 +384,18 @@ const recordTempSourceEvidence = async ({ caseId, header }) => {
 };
 
 test("cycle finish uses gate temp policy when TMPDIR is unset", async () => {
-  const { header, proof } = await runCycleFinish();
+  const { header } = await runCycleFinish();
   assert.equal(header.temp_source, "repo_default");
-  assertTempBinding({ header, proof });
+  assertTempBinding({ header });
   await recordTempSourceEvidence({ caseId: "unset", header });
 });
 
 test("cycle finish respects explicit TMPDIR", async () => {
   const customTmp = ".ato/tmp-custom";
-  const { header, proof } = await runCycleFinish({
+  const { header } = await runCycleFinish({
     envOverrides: { TMPDIR: customTmp },
   });
   assert.equal(header.temp_source, "env:TMPDIR");
-  assertTempBinding({ header, proof });
+  assertTempBinding({ header });
   await recordTempSourceEvidence({ caseId: "set", header });
 });

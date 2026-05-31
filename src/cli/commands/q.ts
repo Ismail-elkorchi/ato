@@ -348,7 +348,6 @@ const QUEUE_HELP: Record<string, string[]> = {
     "  --dest <path|id>        Destination store for intake (optional)",
     "  --allow-cross-store-write  Allow cross-store writes when --dest points elsewhere",
     "  --dry-run               Validate only; do not write to queue",
-    "  --telemetry-ref <ref>   Optional telemetry snapshot ref to record",
     "",
     "Example:",
     "  ato q intake --file /tmp/candidate.json --dest /path/to/dest --allow-cross-store-write --json",
@@ -1045,13 +1044,21 @@ const cmdIntake = async ({
   if (typeof fileValue !== "string" || !fileValue.trim()) {
     throw new Error("Usage: ato q intake --file <candidate.json> [options]");
   }
+  const allowedFlags = new Set([
+    "allow-cross-store-write",
+    "allowCrossStoreWrite",
+    "dest",
+    "dry-run",
+    "dryRun",
+    "file",
+    "help",
+    "json",
+  ]);
+  const unknownFlag = Object.keys(flags).find((key) => !allowedFlags.has(key));
+  if (unknownFlag) {
+    throw new Error(`Unknown option: --${unknownFlag}`);
+  }
   const dryRun = Boolean(flags["dry-run"] || flags["dryRun"]);
-  const telemetryRef =
-    typeof flags["telemetry-ref"] === "string"
-      ? flags["telemetry-ref"].trim()
-      : typeof flags["telemetryRef"] === "string"
-        ? flags["telemetryRef"].trim()
-        : "";
 
   const candidate = await readJsonFileStrict(fileValue.trim());
   const { items, validation } = await loadQueueForWrite(destTarget);
@@ -1067,7 +1074,6 @@ const cmdIntake = async ({
     id,
     sourceRepo: sourceRoot,
     ingestedAt,
-    telemetryRef: telemetryRef || null,
     originFallback,
   });
 
@@ -1202,7 +1208,6 @@ const cmdTransfer = async ({
         id: nextId,
         sourceRepo: sourceTarget.root,
         ingestedAt: transferTimestamp,
-        telemetryRef: null,
         originFallback,
       });
       const transferItem = applyAudit(intakeItem, sourceItem.id);
@@ -1299,7 +1304,6 @@ const cmdTransfer = async ({
     id: nextId,
     sourceRepo: sourceTarget.root,
     ingestedAt: transferTimestamp,
-    telemetryRef: null,
     originFallback,
   });
 

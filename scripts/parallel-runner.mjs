@@ -7,16 +7,11 @@ import {
   mkdirSync,
   readdirSync,
   realpathSync,
-  unlinkSync,
-  writeFileSync,
 } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 const RUNNER_ID = "ato-parallel-runner";
-const PROOF_SECRET_SEED = "ato-parallel-runner::proof-secret::v1";
 const CONTENT_HASH_METHOD = "sha256(file_bytes)";
-const RUNNER_BARRIER_TIMEOUT_DEFAULT_MS = 20000;
-const RUNNER_BARRIER_POLL_DEFAULT_MS = 50;
 const REALPATH_HASH_METHOD = "sha256(path_string)";
 const TEMP_PATH_HASH_METHOD = "sha256(path_string)";
 const TEMP_RUN_DIR_NAME = ".ato-test";
@@ -26,7 +21,6 @@ const TEMP_SOURCE_ENV_ATO = "env:ATO_TEST_TMPDIR";
 const TEMP_SOURCE_REPO_DEFAULT = "repo_default";
 const TEMP_SOURCE_REASON_MISMATCH_IGNORED = "source_flag_mismatch_ignored";
 const TEMP_SOURCE_ENUM = new Set([TEMP_SOURCE_REPO_DEFAULT]);
-const SHARD_EXAMPLE = "1/4";
 
 const parseOverride = (raw) => {
   if (!raw) return { value: null, source: "auto" };
@@ -43,75 +37,6 @@ const parseOverride = (raw) => {
   return { value, source: "env" };
 };
 
-const parsePositiveInt = (raw, name, fallback) => {
-  if (raw === undefined || raw === null || raw === "") return fallback;
-  const value = Number(String(raw).trim());
-  if (!Number.isInteger(value) || value < 1) {
-    throw new Error(`${name} must be an integer >= 1 when set.`);
-  }
-  return value;
-};
-
-export const parseShardSpec = (raw, label = "ATO_TEST_SHARD") => {
-  if (raw === undefined || raw === null || raw === "") return null;
-  const normalized = String(raw).trim();
-  if (!normalized) return null;
-  const match = normalized.match(/^(\d+)\s*\/\s*(\d+)$/);
-  if (!match) {
-    throw new Error(
-      `${label} must be in form K/N with 1<=K<=N (example: ${SHARD_EXAMPLE}).`,
-    );
-  }
-  const index = Number(match[1]);
-  const count = Number(match[2]);
-  if (
-    !Number.isInteger(index) ||
-    !Number.isInteger(count) ||
-    index < 1 ||
-    count < 1 ||
-    index > count
-  ) {
-    throw new Error(
-      `${label} must be in form K/N with 1<=K<=N (example: ${SHARD_EXAMPLE}).`,
-    );
-  }
-  return { index, count };
-};
-
-const extractShardArg = (args) => {
-  const nextArgs = [];
-  let shardRaw = null;
-  for (let i = 0; i < args.length; i += 1) {
-    const arg = args[i];
-    if (typeof arg === "string" && arg.startsWith("--shard")) {
-      if (arg === "--shard") {
-        const value = args[i + 1];
-        if (!value || String(value).startsWith("--")) {
-          throw new Error(
-            `--shard must be in form K/N (example: ${SHARD_EXAMPLE}).`,
-          );
-        }
-        shardRaw = value;
-        i += 1;
-        continue;
-      }
-      const match = arg.match(/^--shard=(.+)$/);
-      if (match) {
-        shardRaw = match[1];
-        continue;
-      }
-    }
-    nextArgs.push(arg);
-  }
-  return { args: nextArgs, shardRaw };
-};
-
-export const applyShard = (items, spec) => {
-  if (!spec) return items.slice();
-  const offset = (spec.index - 1) % spec.count;
-  return items.filter((_, idx) => idx % spec.count === offset);
-};
-
 const detectParallelism = () => {
   const available =
     typeof os.availableParallelism === "function"
@@ -124,20 +49,7 @@ const detectParallelism = () => {
 const detectedParallelism = detectParallelism();
 let concurrency = detectedParallelism;
 let source = "auto";
-let shardSpec = null;
-let shardSpecArg = null;
-let rawArgs = process.argv.slice(2);
-
-try {
-  const extracted = extractShardArg(rawArgs);
-  rawArgs = extracted.args;
-  shardSpecArg = parseShardSpec(extracted.shardRaw, "--shard");
-} catch (error) {
-  const message =
-    error instanceof Error ? error.message : "Invalid --shard argument.";
-  process.stderr.write(`${message}\n`);
-  process.exit(1);
-}
+const rawArgs = process.argv.slice(2);
 
 try {
   const override = parseOverride(process.env.ATO_TEST_CONCURRENCY);
@@ -151,14 +63,6 @@ try {
   process.stderr.write(`${message}\n`);
   process.exit(1);
 }
-try {
-  shardSpec = shardSpecArg ?? parseShardSpec(process.env.ATO_TEST_SHARD);
-} catch (error) {
-  const message =
-    error instanceof Error ? error.message : "Invalid ATO_TEST_SHARD.";
-  process.stderr.write(`${message}\n`);
-  process.exit(1);
-}
 
 const resolveRunnerVersion = () => {
   try {
@@ -167,14 +71,6 @@ const resolveRunnerVersion = () => {
   } catch {
     return "unknown";
   }
-};
-
-const mixProofSecret = (seed) => {
-  let acc = 7;
-  for (const char of seed) {
-    acc = (acc * 31 + char.charCodeAt(0)) % 9973;
-  }
-  return `${seed}:${acc}`;
 };
 
 export const computeArgvFingerprint = (args) =>
@@ -265,54 +161,6 @@ const resolveTestPathInfo = (filePath, baseDir, repoRootRealpath) => {
     resolvedRealpath,
     resolvedRealpathHash: computePathHash(resolvedRealpath),
   };
-};
-
-const sleep = (ms) => {
-  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
-};
-
-const waitForRunnerBarrier = ({
-  barrierDir,
-  baseDir,
-  invocationId,
-  discoveredCount,
-  timeoutMs,
-  pollMs,
-}) => {
-  const rel = path.isAbsolute(barrierDir)
-    ? null
-    : ensureWithinRoot(barrierDir, baseDir);
-  const absolute = rel ? path.resolve(baseDir, rel) : barrierDir;
-  const readyPath = path.join(absolute, "ready.json");
-  const continuePath = path.join(absolute, "continue.json");
-  mkdirSync(absolute, { recursive: true });
-  writeFileSync(
-    readyPath,
-    `${JSON.stringify({
-      invocation_id: invocationId,
-      pid: process.pid,
-      discovered_test_count: discoveredCount,
-    })}\n`,
-    "utf8",
-  );
-  const attempts = Math.max(1, Math.ceil(timeoutMs / pollMs));
-  for (let attempt = 0; attempt < attempts; attempt += 1) {
-    try {
-      const payload = JSON.parse(readFileSync(continuePath, "utf8"));
-      if (payload?.invocation_id !== invocationId) {
-        throw new Error("runner_barrier_invocation_mismatch");
-      }
-      return { ok: true, reason: "ok", path: rel };
-    } catch (error) {
-      if (error?.code !== "ENOENT") {
-        throw error;
-      }
-    }
-    if (attempt < attempts - 1) {
-      sleep(pollMs);
-    }
-  }
-  throw new Error("runner_barrier_timeout");
 };
 
 export const computeTestFileId = (filePath, baseDir = process.cwd()) =>
@@ -475,36 +323,6 @@ const splitArgs = (args, baseDir) => {
   return { otherArgs, discovered };
 };
 
-export const computeProofSecretHash = ({
-  argvFingerprint,
-  runnerSha256,
-  invocationId,
-}) => {
-  const mixed = mixProofSecret(PROOF_SECRET_SEED);
-  const payload = JSON.stringify({
-    mixed,
-    runner_sha256: runnerSha256,
-    invocation_id: invocationId,
-    argv_fingerprint: argvFingerprint,
-  });
-  return crypto.createHash("sha256").update(payload).digest("hex");
-};
-
-export const computeReceiptHash = ({
-  proofSecretHash,
-  runnerSha256,
-  invocationId,
-  testFileId,
-}) => {
-  const payload = JSON.stringify({
-    proof_secret_hash: proofSecretHash,
-    runner_sha256: runnerSha256,
-    invocation_id: invocationId,
-    test_file_id: testFileId,
-  });
-  return crypto.createHash("sha256").update(payload).digest("hex");
-};
-
 const runnerPath = fileURLToPath(import.meta.url);
 const isMain =
   process.argv[1] &&
@@ -518,11 +336,8 @@ const run = async () => {
   const baseDir = process.cwd();
   const repoRootRealpath = realpathSync.native(baseDir);
   const { otherArgs, discovered } = splitArgs(rawArgs, baseDir);
-  const sharded = applyShard(discovered, shardSpec);
-  const executeList = shardSpec ? sharded : discovered;
+  const executeList = discovered;
   const args = [...otherArgs, ...executeList];
-  const discoveredCount = discovered.length;
-  const selectedCount = executeList.length;
   const argvFingerprint = computeArgvFingerprint(args);
   const invocationPayload = JSON.stringify({
     runner_sha256: runnerSha256,
@@ -534,11 +349,6 @@ const run = async () => {
     .createHash("sha256")
     .update(invocationPayload)
     .digest("hex");
-  const proofSecretHash = computeProofSecretHash({
-    argvFingerprint,
-    runnerSha256,
-    invocationId,
-  });
   const tempBinding = resolveTempBinding({
     baseDir,
     env: process.env,
@@ -546,26 +356,12 @@ const run = async () => {
     ensureDir: true,
   });
 
-  const proofDir = path.join(process.cwd(), ".ato", "runs", "runner-proof");
-  const proofFile = path.join(proofDir, `${invocationId}.json`);
-  const receiptsFile = path.join(proofDir, `receipts-${invocationId}.jsonl`);
-  const proofPath = path
-    .relative(process.cwd(), proofFile)
-    .split(path.sep)
-    .join("/");
-  const receiptsPath = path
-    .relative(process.cwd(), receiptsFile)
-    .split(path.sep)
-    .join("/");
-
   const header = {
     runner_id: RUNNER_ID,
     runner_version: resolveRunnerVersion(),
     runner_sha256: runnerSha256,
     invocation_id: invocationId,
-    proof_secret_hash: proofSecretHash,
-    proof_path: proofPath,
-    receipts_path: receiptsPath,
+    argv_fingerprint: argvFingerprint,
     temp_root: tempBinding.temp_root,
     temp_root_hash: tempBinding.temp_root_hash,
     temp_root_hash_method: tempBinding.temp_root_hash_method,
@@ -577,74 +373,14 @@ const run = async () => {
     concurrency,
     source,
     detected_parallelism: detectedParallelism,
-    shard: shardSpec
-      ? {
-          index: shardSpec.index,
-          count: shardSpec.count,
-          total: discoveredCount,
-          selected: selectedCount,
-        }
-      : null,
+    test_count: executeList.length,
   };
 
-  const barrierDirRaw = process.env.ATO_RUNNER_BARRIER_DIR;
-  const barrierEnabled = process.env.ATO_RUNNER_BARRIER_ENABLE === "1";
-  const barrierTimeoutMs = parsePositiveInt(
-    process.env.ATO_RUNNER_BARRIER_TIMEOUT_MS,
-    "ATO_RUNNER_BARRIER_TIMEOUT_MS",
-    RUNNER_BARRIER_TIMEOUT_DEFAULT_MS,
-  );
-  const barrierPollMs = parsePositiveInt(
-    process.env.ATO_RUNNER_BARRIER_POLL_MS,
-    "ATO_RUNNER_BARRIER_POLL_MS",
-    RUNNER_BARRIER_POLL_DEFAULT_MS,
-  );
-  let barrierResult = "unused";
-  let barrierUsed = false;
-  let barrierIgnored = false;
-  let barrierDirRecord = null;
-  let barrierDirHash = null;
-  if (barrierDirRaw) {
-    if (barrierEnabled) {
-      barrierUsed = true;
-      if (path.isAbsolute(barrierDirRaw)) {
-        barrierDirHash = computePathHash(barrierDirRaw);
-      } else {
-        barrierDirRecord = ensureWithinRoot(barrierDirRaw, baseDir);
-      }
-      try {
-        waitForRunnerBarrier({
-          barrierDir: barrierDirRaw,
-          baseDir,
-          invocationId,
-          discoveredCount: selectedCount,
-          timeoutMs: barrierTimeoutMs,
-          pollMs: barrierPollMs,
-        });
-        barrierResult = "ok";
-      } catch (error) {
-        barrierResult =
-          error instanceof Error ? error.message : "runner_barrier_error";
-      }
-    } else {
-      barrierIgnored = true;
-      barrierResult = "ignored";
-      if (path.isAbsolute(barrierDirRaw)) {
-        barrierDirHash = computePathHash(barrierDirRaw);
-      } else {
-        barrierDirRecord = ensureWithinRoot(barrierDirRaw, baseDir);
-      }
-    }
-  }
-
-  const receiptEntries = executeList
+  const testEntries = executeList
     .map((filePath) => {
       const info = resolveTestPathInfo(filePath, baseDir, repoRootRealpath);
       const testFileId = computeTestFileId(filePath, baseDir);
       return {
-        receipt_kind: "runner_exec_receipt.v1",
-        invocation_id: invocationId,
-        runner_sha256: runnerSha256,
         test_file: info.normalized,
         test_file_id: testFileId,
         repo_relative_path: info.normalized,
@@ -661,12 +397,6 @@ const run = async () => {
         content_hash_method: CONTENT_HASH_METHOD,
         test_content_sha256_before: null,
         test_content_sha256_after: null,
-        receipt_hash: computeReceiptHash({
-          proofSecretHash,
-          runnerSha256,
-          invocationId,
-          testFileId,
-        }),
       };
     })
     .sort((a, b) => a.test_file.localeCompare(b.test_file));
@@ -674,96 +404,23 @@ const run = async () => {
   const childEnv = {
     ...process.env,
     ATO_RUNNER_INVOCATION_ID: invocationId,
-    ATO_RUNNER_RECEIPTS_PATH: receiptsPath,
     ATO_RUNNER_SHA256: runnerSha256,
     TMPDIR: tempBinding.temp_run_dir_absolute,
   };
-  const sanitizedEnvKeys = [];
   const stripChildEnv = (key) => {
     if (Object.prototype.hasOwnProperty.call(childEnv, key)) {
-      sanitizedEnvKeys.push(key);
       delete childEnv[key];
     }
   };
   stripChildEnv("ATO_TEST_TMPDIR");
-  stripChildEnv("ATO_RUNNER_BARRIER_DIR");
-  stripChildEnv("ATO_RUNNER_BARRIER_ENABLE");
-  stripChildEnv("ATO_RUNNER_BARRIER_TIMEOUT_MS");
-  stripChildEnv("ATO_RUNNER_BARRIER_POLL_MS");
   stripChildEnv("ATO_TEST_TMPDIR_SOURCE");
-  sanitizedEnvKeys.sort();
-
-  const writeProof = () => {
-    mkdirSync(proofDir, { recursive: true });
-    try {
-      unlinkSync(proofFile);
-      unlinkSync(receiptsFile);
-    } catch (error) {
-      if (error?.code !== "ENOENT") {
-        throw error;
-      }
-    }
-    const proof = {
-      proof_kind: "runner_exec.v1",
-      runner_id: RUNNER_ID,
-      runner_sha256: runnerSha256,
-      invocation_id: invocationId,
-      proof_secret_hash: proofSecretHash,
-      receipts_path: receiptsPath,
-      argv_fingerprint: argvFingerprint,
-      env_source: source,
-      concurrency_value: concurrency,
-      temp_root: tempBinding.temp_root,
-      temp_root_hash: tempBinding.temp_root_hash,
-      temp_root_hash_method: tempBinding.temp_root_hash_method,
-      temp_source: tempBinding.temp_source,
-      temp_source_reason: tempBinding.temp_source_reason,
-      temp_run_dir: tempBinding.temp_run_dir,
-      temp_run_dir_sha256: tempBinding.temp_run_dir_sha256,
-      temp_run_dir_hash_method: tempBinding.temp_run_dir_hash_method,
-      barrier_used: barrierUsed,
-      barrier_ignored: barrierIgnored,
-      barrier_result: barrierResult,
-      barrier_dir: barrierDirRecord,
-      barrier_dir_hash: barrierDirHash,
-    };
-    if (barrierUsed) {
-      proof.barrier_timeout_ms = barrierTimeoutMs;
-      proof.barrier_poll_ms = barrierPollMs;
-    }
-    if (sanitizedEnvKeys.length) {
-      proof.sanitized_env_keys = sanitizedEnvKeys;
-    }
-    if (shardSpec) {
-      proof.shard = {
-        index: shardSpec.index,
-        count: shardSpec.count,
-        total: discoveredCount,
-        selected: selectedCount,
-      };
-    }
-    writeFileSync(proofFile, `${JSON.stringify(proof)}\n`, "utf8");
-    const lines = receiptEntries.map((entry) => JSON.stringify(entry)).join("\n");
-    writeFileSync(receiptsFile, lines.length ? `${lines}\n` : "", "utf8");
-  };
-
-  writeProof();
-  if (barrierUsed && barrierResult !== "ok") {
-    process.stderr.write(`${barrierResult}\n`);
-    process.exit(1);
-  }
 
   process.stdout.write(`${JSON.stringify(header)}\n`);
 
   const mutationErrors = [];
   let exitCode = 0;
-  const queue = [...receiptEntries];
+  const queue = [...testEntries];
   const poolSize = Math.max(1, Math.min(concurrency, queue.length || 1));
-
-  const updateReceiptFile = () => {
-    const lines = receiptEntries.map((entry) => JSON.stringify(entry)).join("\n");
-    writeFileSync(receiptsFile, lines.length ? `${lines}\n` : "", "utf8");
-  };
 
   const runSingle = (entry) =>
     new Promise((resolve) => {
@@ -771,7 +428,6 @@ const run = async () => {
       try {
         beforeHash = computeTestContentSha256(entry.test_file, baseDir);
         entry.test_content_sha256_before = beforeHash;
-        updateReceiptFile();
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         process.stderr.write(`${message}\n`);
@@ -795,7 +451,6 @@ const run = async () => {
         try {
           const afterHash = computeTestContentSha256(entry.test_file, baseDir);
           entry.test_content_sha256_after = afterHash;
-          updateReceiptFile();
           if (beforeHash && afterHash && beforeHash !== afterHash) {
             mutationErrors.push({
               test_file: entry.test_file,

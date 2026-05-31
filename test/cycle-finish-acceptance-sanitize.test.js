@@ -197,13 +197,13 @@ const runCli = (root, args) => {
   return spawnSync(process.execPath, [cliPath, ...args], {
     cwd: root,
     encoding: "utf8",
-    env: { ...process.env, ATO_TEST_SHARD: "" },
+    env: { ...process.env },
   });
 };
 
 test("cycle finish sanitizes absolute paths in acceptance JSON before pack verify", async () => {
   const root = await makeTempDir("ato-acceptance-sanitize-");
-  const baselineTag = "baseline_block0004_v0";
+  const baselineTag = "baseline-main";
   const check =
     "cmd:node -e \"const path=require('node:path');process.stdout.write(JSON.stringify({agentsPath:path.resolve('AGENTS.md')}));\" -- --json";
 

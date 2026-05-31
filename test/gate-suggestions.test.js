@@ -10,9 +10,8 @@ import { buildContractIndex } from "../dist/core/contracts/index.js";
 
 const sanitizeEnv = (env) => {
   const next = { ...env };
-  const stripKeys = new Set(["ATO_TEST_SHARD"]);
   for (const key of Object.keys(next)) {
-    if (key.startsWith("NODE_TEST") || stripKeys.has(key)) {
+    if (key.startsWith("NODE_TEST")) {
       delete next[key];
     }
   }

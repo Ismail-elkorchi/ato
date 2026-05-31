@@ -97,14 +97,12 @@ const HELP = [
   "Usage:",
   "  ato cycle start",
   "  ato cycle abort --reason <text>",
-  "  ato cycle preflight-finish",
   "  ato cycle finish",
   "",
   "Options:",
   "  --json         Emit machine-readable JSON",
   "  --reason       Required when aborting a cycle",
   "  --budget-ms    Time budget for cycle finish (default: 9000)",
-  "  --check-only   Run finish preflight checks without writing artifacts",
   "  --run-acceptance  Allow running acceptance commands during finish",
   "  --run-gate        Allow running full gate during finish",
   "  --run-pack-verify Allow running pack verify during finish",
@@ -114,12 +112,21 @@ const CYCLE_START_SCHEMA = "cycle-start.v1";
 const CYCLE_FINISH_SCHEMA = "cycle-finish.v1";
 const CYCLE_ABORT_SCHEMA = "cycle-abort.v1";
 const CYCLE_ABORT_ERROR_SCHEMA = "cycle-abort-error.v1";
-const CYCLE_FINISH_PREFLIGHT_SCHEMA = "cycle-finish-preflight.v1";
 const CYCLE_STATE_SCHEMA = "cycle-state.v1";
 const CYCLE_SELECTION_SCHEMA = "cycle-selection.v1";
 const CONTRACT_INDEX_SCHEMA = "cycle-contract-index.v1";
 const CONTRACT_EXTRACT_SCHEMA = "cycle-contract-extract.v1";
 const DEFAULT_CYCLE_FINISH_BUDGET_MS = 9000;
+const CYCLE_FLAGS = new Set([
+  "budget-ms",
+  "budgetMs",
+  "help",
+  "json",
+  "reason",
+  "run-acceptance",
+  "run-gate",
+  "run-pack-verify",
+]);
 
 const toPosixPath = (value: string): string => value.replace(/\\/g, "/");
 
@@ -1411,301 +1418,6 @@ const ensureQueueCompletionEvidence = (item: QueueItem): void => {
   }
 };
 
-type FinishPreflightIssue = {
-  code: string;
-  path: string | null;
-  message: string;
-  suggested_commands: string[];
-};
-
-const pushFinishPreflightIssue = (
-  issues: FinishPreflightIssue[],
-  issue: FinishPreflightIssue,
-): void => {
-  issues.push({
-    ...issue,
-    suggested_commands: [...issue.suggested_commands].sort((a, b) =>
-      a.localeCompare(b),
-    ),
-  });
-};
-
-const sortFinishPreflightIssues = (
-  issues: FinishPreflightIssue[],
-): FinishPreflightIssue[] =>
-  [...issues].sort((a, b) => {
-    const codeDiff = a.code.localeCompare(b.code);
-    if (codeDiff !== 0) return codeDiff;
-    const pathA = a.path ?? "";
-    const pathB = b.path ?? "";
-    const pathDiff = pathA.localeCompare(pathB);
-    if (pathDiff !== 0) return pathDiff;
-    return a.message.localeCompare(b.message);
-  });
-
-const runCycleFinishPreflight = async ({
-  target,
-  json,
-}: {
-  target: TargetContext;
-  json: boolean;
-}): Promise<void> => {
-  const issues: FinishPreflightIssue[] = [];
-  const state = await readState(target.storePath);
-  const activeCycleId = (state as typeof state & { activeCycleId?: string })
-    .activeCycleId;
-  const activeQueueId = (state as typeof state & { activeCycleQueueId?: string })
-    .activeCycleQueueId;
-  if (!activeCycleId) {
-    pushFinishPreflightIssue(issues, {
-      code: "NO_ACTIVE_CYCLE",
-      path: toRelativePath(target.root, path.join(target.storePath, "state.json")),
-      message: "No active cycle state found.",
-      suggested_commands: ["ato cycle start --json"],
-    });
-  }
-
-  const cycleDir = activeCycleId
-    ? path.join(target.storePath, "cycles", activeCycleId)
-    : null;
-  const cycleStatePath = cycleDir ? path.join(cycleDir, "cycle-state.json") : null;
-  const cycleState = cycleStatePath
-    ? await readJson<Record<string, unknown> | null>(cycleStatePath, null)
-    : null;
-  if (activeCycleId && !cycleState) {
-    pushFinishPreflightIssue(issues, {
-      code: "MISSING_CYCLE_STATE",
-      path: cycleStatePath ? toRelativePath(target.root, cycleStatePath) : null,
-      message: "Missing cycle-state.json for active cycle.",
-      suggested_commands: [
-        "ato cycle abort --reason \"missing cycle-state artifact\" --json",
-        "ato cycle start --json",
-      ],
-    });
-  }
-
-  const queueId =
-    (cycleState && typeof cycleState["queue_id"] === "string"
-      ? cycleState["queue_id"]
-      : null) ??
-    activeQueueId ??
-    null;
-  if (activeCycleId && !queueId) {
-    pushFinishPreflightIssue(issues, {
-      code: "MISSING_QUEUE_ID",
-      path: cycleStatePath ? toRelativePath(target.root, cycleStatePath) : null,
-      message: "Active cycle is missing queue_id.",
-      suggested_commands: ["ato cycle abort --reason \"active cycle missing queue id\" --json"],
-    });
-  }
-
-  if (cycleState) {
-    const contractIndexRel =
-      typeof cycleState["contract_index_ref"] === "string"
-        ? String(cycleState["contract_index_ref"])
-        : toRelativePath(
-            target.root,
-            path.join(cycleDir ?? target.storePath, "contract-index.json"),
-          );
-    const contractExtractRel =
-      typeof cycleState["contract_extract_ref"] === "string"
-        ? String(cycleState["contract_extract_ref"])
-        : toRelativePath(
-            target.root,
-            path.join(cycleDir ?? target.storePath, "contract-extract.json"),
-          );
-    const contractArtifacts = [
-      { code: "MISSING_CONTRACT_INDEX", rel: contractIndexRel },
-      { code: "MISSING_CONTRACT_EXTRACT", rel: contractExtractRel },
-    ];
-    for (const artifact of contractArtifacts) {
-      if (!artifact.rel) continue;
-      const resolved = path.resolve(target.root, artifact.rel);
-      try {
-        await fs.access(resolved);
-      } catch {
-        pushFinishPreflightIssue(issues, {
-          code: artifact.code,
-          path: artifact.rel,
-          message: `Missing required contract artifact: ${artifact.rel}.`,
-          suggested_commands: ["ato cycle start --json"],
-        });
-      }
-    }
-  }
-
-  const { items, validation } = await loadQueueForWrite(target);
-  if (validation.errors.length) {
-    for (const error of [...validation.errors].sort((a, b) =>
-      `${a.id}:${a.message}`.localeCompare(`${b.id}:${b.message}`),
-    )) {
-      pushFinishPreflightIssue(issues, {
-        code: "QUEUE_VALIDATION_ERROR",
-        path: null,
-        message: `${error.id}: ${error.message}`,
-        suggested_commands: ["ato q validate --json"],
-      });
-    }
-  }
-
-  const queueItem = queueId
-    ? items.find((item) => item.id === queueId) ?? null
-    : null;
-  if (queueId && !queueItem) {
-    pushFinishPreflightIssue(issues, {
-        code: "MISSING_QUEUE_ITEM",
-        path: ".ato/queue/items.jsonl",
-        message: `Queue item ${queueId} not found in queue store.`,
-        suggested_commands: [
-          "ato q list --json",
-          "ato cycle abort --reason \"queue item missing for active cycle\" --json",
-        ],
-      });
-  }
-
-  if (queueItem) {
-    if (queueItem.status !== "active") {
-      pushFinishPreflightIssue(issues, {
-        code: "QUEUE_NOT_ACTIVE",
-        path: ".ato/queue/items.jsonl",
-        message: `Queue item ${queueItem.id} must be active before cycle finish.`,
-        suggested_commands: [
-          "ato q list --json",
-          `ato cycle abort --reason "queue ${queueItem.id} is not active" --json`,
-        ],
-      });
-    }
-
-    const contractRefs = Array.isArray(queueItem.spec?.contract_refs)
-      ? queueItem.spec?.contract_refs ?? []
-      : [];
-    if (!contractRefs.length) {
-      pushFinishPreflightIssue(issues, {
-        code: "MISSING_CONTRACT_REFS",
-        path: "/spec/contract_refs",
-        message: "Queue item must define spec.contract_refs before finish.",
-        suggested_commands: ["ato q validate --json"],
-      });
-    }
-
-    const inputs = Array.isArray(queueItem.spec?.inputs)
-      ? queueItem.spec.inputs.map((entry) => String(entry))
-      : [];
-    if (!inputs.length) {
-      pushFinishPreflightIssue(issues, {
-        code: "MISSING_INPUTS",
-        path: "/spec/inputs",
-        message: "Queue item must define spec.inputs before finish.",
-        suggested_commands: ["ato q validate --json"],
-      });
-    }
-    for (let index = 0; index < inputs.length; index += 1) {
-      const entry = String(inputs[index] ?? "");
-      const pathHint = `/spec/inputs/${index}`;
-      if (!hasValidInputCitation(entry)) {
-        pushFinishPreflightIssue(issues, {
-          code: "INVALID_INPUT_CITATION",
-          path: pathHint,
-          message: `Input '${entry}' is not a valid evidence citation.`,
-          suggested_commands: ["ato q validate --json"],
-        });
-        continue;
-      }
-      const fileMatch = entry.match(/^file:(.+)$/i);
-      if (!fileMatch) continue;
-      const citedPath = (fileMatch[1] ?? "").trim();
-      if (!citedPath) continue;
-      const resolvedPath = path.resolve(target.root, citedPath);
-      try {
-        const stat = await fs.stat(resolvedPath);
-        if (stat.isDirectory()) {
-          pushFinishPreflightIssue(issues, {
-            code: "INPUT_FILE_IS_DIRECTORY",
-            path: pathHint,
-            message: `Input '${entry}' points to a directory, not a file.`,
-            suggested_commands: ["ato q validate --json"],
-          });
-        }
-      } catch {
-        pushFinishPreflightIssue(issues, {
-          code: "INPUT_FILE_MISSING",
-          path: pathHint,
-          message: `Input '${entry}' points to a missing file.`,
-          suggested_commands: ["ato q validate --json"],
-        });
-      }
-    }
-
-    const acceptance = Array.isArray(queueItem.spec?.acceptance_criteria)
-      ? queueItem.spec.acceptance_criteria.map((entry) => String(entry).trim())
-      : [];
-    if (!acceptance.length) {
-      pushFinishPreflightIssue(issues, {
-        code: "MISSING_ACCEPTANCE_CRITERIA",
-        path: "/spec/acceptance_criteria",
-        message: "Queue item must define acceptance criteria before finish.",
-        suggested_commands: ["ato q validate --json"],
-      });
-    } else {
-      const hasFinishAcceptance = acceptance.some((entry) => {
-        const { command } = extractCommand(entry);
-        return Boolean(command && isCycleFinishCommand(command));
-      });
-      if (!hasFinishAcceptance) {
-        pushFinishPreflightIssue(issues, {
-          code: "MISSING_CYCLE_FINISH_ACCEPTANCE",
-          path: "/spec/acceptance_criteria",
-          message:
-            "Acceptance criteria must include a cycle finish command entry.",
-          suggested_commands: [
-            `ato q update ${queueItem.id} --acceptance-add "cmd:ato cycle finish --json"`,
-            "ato q validate --json",
-          ],
-        });
-      }
-    }
-  }
-
-  const sortedIssues = sortFinishPreflightIssues(issues);
-  const suggestedNextCommands = sortedIssues.length
-    ? dedupeStable(
-        sortedIssues.flatMap((issue) => issue.suggested_commands),
-      ).sort((a, b) => a.localeCompare(b))
-    : [
-        "ato cycle finish --json --run-acceptance --run-gate --run-pack-verify --budget-ms 600000",
-      ];
-  const payload = {
-    ok: sortedIssues.length === 0,
-    schema_version: CYCLE_FINISH_PREFLIGHT_SCHEMA,
-    cycle_id: activeCycleId ?? null,
-    queue_id: queueId,
-    issues: sortedIssues,
-    suggested_next_commands: suggestedNextCommands,
-  };
-
-  if (json) {
-    writeJson(payload);
-  } else {
-    const lines = [
-      formatTargetLine(target),
-      `cycle preflight-finish: ${payload.ok ? "ok" : "issues"}`,
-      `cycle: ${payload.cycle_id ?? "none"}`,
-      `queue: ${payload.queue_id ?? "none"}`,
-      `issues: ${sortedIssues.length}`,
-    ];
-    for (const issue of sortedIssues) {
-      lines.push(`- ${issue.code}: ${issue.message}`);
-    }
-    if (suggestedNextCommands.length) {
-      lines.push("suggested commands:");
-      for (const command of suggestedNextCommands) {
-        lines.push(`- ${command}`);
-      }
-    }
-    writeLines(lines);
-  }
-};
-
 export const runCycleCommand = async ({
   subcommand,
   args,
@@ -1728,18 +1440,11 @@ export const runCycleCommand = async ({
     return;
   }
 
-  if (flags["allow-dirty"] || flags["allowDirty"]) {
-    const error = new Error("Unknown option: --allow-dirty");
+  const unknownFlag = Object.keys(flags).find((key) => !CYCLE_FLAGS.has(key));
+  if (unknownFlag) {
+    const error = new Error(`Unknown option: --${unknownFlag}`);
     (error as Error & { code?: number }).code = 1;
     throw error;
-  }
-
-  const checkOnly = isFlagEnabled(flags["check-only"]) || isFlagEnabled(flags["checkOnly"]);
-  if (subcommand === "preflight-finish" || (subcommand === "finish" && checkOnly)) {
-    const target = await resolveTargetContext({ context, requireWrite: false });
-    await ensureProtocol(target.root);
-    await runCycleFinishPreflight({ target, json });
-    return;
   }
 
   if (subcommand === "start") {
